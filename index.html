@@ -1,0 +1,2029 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#07081a">
+<title>ÁTOMO LAB · Química en realidad virtual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07081a;--glass:rgba(14,16,36,.62);--line:rgba(255,255,255,.12);--txt:#eef2ff;--mut:rgba(226,232,255,.62);--acc:#3dff9e;--acc2:#5ec8ff;
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,#151338 0%,#07081a 60%);color:var(--txt);font-family:Inter,system-ui,sans-serif;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+#stage{position:fixed;inset:0}
+#gl,#handsOverlay,#cam{position:absolute;inset:0;width:100%;height:100%;display:block}
+#gl{touch-action:none}
+#handsOverlay{pointer-events:none}
+#cam{object-fit:cover;opacity:0;transition:opacity .4s}
+body.hands #cam{opacity:1} body.mirror #cam{transform:scaleX(-1)}
+body.hands #stage::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,8,26,.35),transparent 25%,transparent 70%,rgba(7,8,26,.45));pointer-events:none}
+
+/* barra superior */
+#top{position:fixed;top:0;left:0;right:0;padding:calc(var(--sat) + 10px) calc(var(--sar) + 12px) 10px calc(var(--sal) + 12px);display:flex;align-items:center;justify-content:space-between;gap:8px;z-index:5;pointer-events:none}
+#top>*{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:9px;font-family:"Space Grotesk";letter-spacing:.02em}
+.brand svg{width:34px;height:34px;filter:drop-shadow(0 0 10px rgba(61,255,158,.45))}
+.brand b{font-size:19px;font-weight:700}.brand span{font-size:11px;font-weight:600;color:var(--acc);border:1px solid rgba(61,255,158,.5);border-radius:6px;padding:1px 5px;margin-left:2px}
+.tools{display:flex;gap:6px;align-items:center}
+.ib{width:38px;height:38px;border-radius:12px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:grid;place-items:center;transition:transform .15s,background .2s}
+.ib:active{transform:scale(.92)} .ib:hover{background:rgba(40,44,80,.7)}
+.ib svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ib.txt{font-family:"Space Grotesk";font-weight:700;font-size:13px;width:auto;padding:0 11px}
+.ib.dim{opacity:.55} .ib.off{opacity:.45}
+#btnVR{background:linear-gradient(135deg,rgba(94,200,255,.28),rgba(159,124,255,.28))}
+#btnHands{background:linear-gradient(135deg,rgba(61,255,158,.25),rgba(94,200,255,.2))}
+.pill{height:38px;border-radius:12px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;align-items:center;gap:6px;padding:0 11px 0 7px;font-family:"Space Grotesk";font-size:14px}
+.pill .ring{width:24px;height:24px;border-radius:50%;background:conic-gradient(var(--acc) var(--p,0%),rgba(255,255,255,.12) 0);display:grid;place-items:center;font-size:12px}
+.pill .ring::after{content:"🧪";width:18px;height:18px;border-radius:50%;background:#12142c;display:grid;place-items:center;font-size:10px}
+.pill .sl{color:var(--mut);font-size:12px}
+@media (max-width:520px){.brand b,.brand span{display:none}.ib{width:35px;height:35px;border-radius:11px}.tools{gap:5px}.pill{height:35px;padding:0 9px 0 6px}.ib.txt{padding:0 8px}}
+@media (max-width:370px){#btnSound{display:none}}
+
+/* toasts */
+#toasts{position:fixed;top:calc(var(--sat) + 60px);left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 24px));display:flex;flex-direction:column;gap:8px;z-index:6;pointer-events:none}
+.toast{background:rgba(12,14,32,.84);border:1px solid var(--line);border-radius:16px;padding:11px 14px;font-size:14px;line-height:1.4;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 10px 40px rgba(0,0,0,.4);opacity:0;transform:translateY(-10px) scale(.97);transition:all .35s cubic-bezier(.2,.9,.3,1.2)}
+.toast.in{opacity:1;transform:none}
+.toast.disc{border-color:rgba(61,255,158,.55);box-shadow:0 0 0 1px rgba(61,255,158,.15),0 12px 50px rgba(61,255,158,.18)}
+.toast.boom{border-color:rgba(255,140,60,.6);background:linear-gradient(135deg,rgba(60,20,10,.88),rgba(14,14,32,.88))}
+.toast.ach{border-color:rgba(255,210,80,.55)}
+.t-disc small,.t-ach small{display:block;font-size:10.5px;letter-spacing:.12em;color:var(--acc);font-weight:700}
+.t-disc b{font-family:"Space Grotesk";font-size:20px;display:block;margin:2px 0}.t-disc b span{color:var(--acc2);font-weight:600}
+.t-disc p{margin:0;color:var(--mut);font-size:13.5px}
+.t-ach{display:flex;gap:12px;align-items:center}.t-ach small{color:#ffd250}.t-ach b{font-family:"Space Grotesk";font-size:16px}.t-ico{font-size:28px}
+.t-row{display:flex;gap:12px;align-items:center}.t-swatch{width:30px;height:30px;border-radius:50%;flex:none;box-shadow:0 0 20px currentColor}
+
+/* termómetro */
+#thermo{position:fixed;left:50%;top:calc(var(--sat) + 58px);transform:translate(-50%,-6px);display:flex;align-items:center;gap:9px;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:7px 12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);opacity:0;transition:all .25s;z-index:4;font-size:13px;pointer-events:none}
+#thermo.show{opacity:1;transform:translate(-50%,0)}
+#thermo .tbar{width:90px;height:7px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden}
+#thermo .tbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#5ec8ff,#ffd250,#ff5a2a);border-radius:9px;transition:width .1s}
+#thermo b{font-family:"Space Grotesk";min-width:56px}#thermo small{color:var(--mut)}
+@media (max-width:520px){#thermo small{display:none}.toast{font-size:13px;padding:9px 12px}.t-disc b{font-size:17px}.t-disc p{font-size:12.5px}}
+body:has(#toasts .toast) #thermo{top:auto;bottom:calc(var(--dockH) + 14px)}
+
+/* info elemento */
+#elinfo{position:fixed;left:50%;bottom:calc(var(--dockH) + 12px);transform:translate(-50%,10px);display:flex;gap:11px;align-items:center;background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:8px 14px 8px 8px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);opacity:0;transition:all .25s;pointer-events:none;z-index:4;max-width:calc(100vw - 24px)}
+#elinfo.show{opacity:1;transform:translate(-50%,0)}
+#elinfo .big{width:42px;height:42px;border-radius:11px;background:var(--c);color:#0b0d18;font:700 20px "Space Grotesk";display:grid;place-items:center;flex:none}
+#elinfo b{font-family:"Space Grotesk";font-size:16px;display:block}#elinfo small{color:var(--mut);font-size:12px}
+
+/* dock tabla periódica */
+:root{--dockH:84px}
+body.table-open{--dockH:min(52vh,440px)}
+#dock{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:0 calc(var(--sar) + 10px) calc(var(--sab) + 10px) calc(var(--sal) + 10px);transition:transform .3s}
+.dockwrap{background:rgba(12,14,32,.72);border:1px solid var(--line);border-radius:20px;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 -10px 40px rgba(0,0,0,.35);overflow:hidden}
+.dockhead{display:flex;align-items:center;gap:8px;padding:8px}
+#quick{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:none;touch-action:pan-x;mask-image:linear-gradient(90deg,#000 92%,transparent)}
+#quick::-webkit-scrollbar{display:none}
+#btnTable{flex:none;height:52px;padding:0 12px;border-radius:13px;background:rgba(255,255,255,.08);border:1px solid var(--line);font:600 13px "Space Grotesk";display:flex;align-items:center;gap:6px}
+#btnTable span{transition:transform .3s;display:inline-block}
+body.table-open #btnTable span{transform:rotate(180deg)}
+.tile{position:relative;border-radius:9px;background:color-mix(in srgb,var(--c) 82%,#000);color:#0b0d18;display:grid;place-items:center;touch-action:pan-x;transition:transform .12s,filter .12s;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 0 rgba(0,0,0,.18)}
+.tile i{position:absolute;top:2px;left:4px;font-style:normal;font-size:8.5px;font-weight:600;opacity:.65}
+.tile b{font:700 15px "Space Grotesk"}
+.tile s{display:none}
+.tile:hover{filter:brightness(1.15)} .tile.press{transform:scale(.9);filter:brightness(1.3)}
+.tile.q{flex:none;width:48px;height:52px;border-radius:12px}.tile.q b{font-size:19px}.tile.q i{font-size:9.5px;top:3px;left:5px}
+#ptable{display:none;--t:max(30px,min(calc((100vw - 44px)/18),46px));grid-template-columns:repeat(18,var(--t));grid-template-rows:repeat(7,var(--t)) 8px repeat(2,var(--t));gap:3px;padding:2px 10px 12px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;justify-content:safe center;scrollbar-width:thin}
+body.table-open #ptable{display:grid}
+#ptable .tile{width:var(--t);height:var(--t)}
+#ptable .tile b{font-size:calc(var(--t)*.38)}
+.ph{font-size:9px;color:var(--mut);display:grid;place-items:center;border:1px dashed rgba(255,255,255,.18);border-radius:8px}
+.legend{display:flex;flex-wrap:wrap;gap:3px 10px;align-content:center;padding:0 6px;font-size:10px;color:var(--mut)}
+.legend span{display:flex;align-items:center;gap:4px}.legend i{width:8px;height:8px;border-radius:3px;display:inline-block}
+@media (max-width:700px){.legend{display:none}}
+
+/* modo manos */
+#handsbar{position:fixed;left:50%;bottom:calc(var(--dockH) + 14px);transform:translateX(-50%);display:none;gap:8px;z-index:5}
+body.hands #handsbar{display:flex}
+#handsbar button{background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:9px 13px;font-size:13px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);white-space:nowrap}
+body.hands #btnHands{box-shadow:0 0 0 2px var(--acc)}
+
+/* bienvenida */
+#hint{position:fixed;left:50%;bottom:calc(var(--dockH) + 18px);transform:translateX(-50%);width:min(420px,calc(100vw - 24px));background:linear-gradient(160deg,rgba(26,30,66,.9),rgba(12,14,32,.9));border:1px solid rgba(94,200,255,.3);border-radius:22px;padding:18px 18px 14px;z-index:5;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 20px 60px rgba(0,0,0,.5);transition:all .4s}
+#hint.gone{opacity:0;transform:translate(-50%,20px);pointer-events:none}
+#hint h1{font:700 22px "Space Grotesk";margin:0 0 4px}#hint h1 em{font-style:normal;color:var(--acc)}
+#hint p{margin:0 0 10px;color:var(--mut);font-size:13.5px;line-height:1.45}
+#hint ul{margin:0 0 14px;padding:0;list-style:none;display:grid;gap:7px;font-size:13.5px}
+#hint li{display:flex;gap:9px;align-items:flex-start}#hint li span{flex:none;width:24px;height:24px;border-radius:8px;background:rgba(255,255,255,.08);display:grid;place-items:center;font-size:13px}
+.actions-row{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.actions-row button,#hint button{padding:10px 16px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid var(--line);font-weight:600;font-size:14px}
+button.primary{background:linear-gradient(135deg,#3dff9e,#5ec8ff)!important;color:#06121a;border:0!important}
+
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(4,5,14,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:10;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+#modal.open{opacity:1;pointer-events:auto}
+.sheet{width:min(760px,100vw);max-height:86vh;overflow:auto;background:linear-gradient(180deg,#141633,#0b0c1f);border:1px solid var(--line);border-radius:24px 24px 0 0;padding:18px 18px calc(var(--sab) + 18px);transform:translateY(30px);transition:transform .3s;-webkit-user-select:text;user-select:text}
+#modal.open .sheet{transform:none}
+@media (min-width:800px){#modal{align-items:center}.sheet{border-radius:24px}}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mhead h2{font:700 22px "Space Grotesk";margin:0}.mhead p{margin:3px 0 0;color:var(--mut);font-size:13px}
+.x-btn{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.08);flex:none}
+.bar{height:6px;border-radius:9px;background:rgba(255,255,255,.1);margin:14px 0 12px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.06);font-weight:600;font-size:13px}.tabs button.on{background:rgba(61,255,158,.18);color:var(--acc)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+.card{border:1px solid var(--line);border-radius:14px;padding:11px;background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:4px}
+.card .f{font:700 20px "Space Grotesk";color:rgba(255,255,255,.55)}.card .n{font-weight:700;font-size:14px;color:rgba(255,255,255,.5)}.card .x{font-size:12px;color:var(--mut);flex:1;line-height:1.35}
+.card.done{border-color:rgba(61,255,158,.35);background:rgba(61,255,158,.05)}.card.done .f{color:var(--acc)}.card.done .n{color:#fff}
+.card.ach .ico{font-size:26px;filter:grayscale(1);opacity:.5}.card.ach.done .ico{filter:none;opacity:1}
+.mini{margin-top:4px;padding:6px 8px;border-radius:9px;background:rgba(255,255,255,.07);font-size:12px;font-weight:600;align-self:flex-start}
+.steps{padding-left:20px;line-height:1.55;font-size:14.5px}.steps li{margin:4px 0}
+.tips{padding-left:18px;font-size:14px;line-height:1.6;color:#dfe6ff}
+.sheet h3{font:600 15px "Space Grotesk";margin:14px 0 2px;color:var(--acc2)}
+.para{font-size:14.5px;line-height:1.5;color:#dfe6ff}
+.fatal{display:grid;place-items:center;height:100%;text-align:center;font:600 20px "Space Grotesk"}
+#btnSound.off .w{display:none}
+</style>
+</head>
+<body>
+<div id="stage"><video id="cam" playsinline muted></video><canvas id="gl"></canvas><canvas id="handsOverlay"></canvas></div>
+
+<header id="top">
+  <div class="brand">
+    <svg viewBox="0 0 48 48" fill="none" stroke="#3dff9e" stroke-width="2"><ellipse cx="24" cy="24" rx="20" ry="8"/><ellipse cx="24" cy="24" rx="20" ry="8" transform="rotate(60 24 24)" stroke="#5ec8ff"/><ellipse cx="24" cy="24" rx="20" ry="8" transform="rotate(120 24 24)" stroke="#9f7cff"/><circle cx="24" cy="24" r="4.5" fill="#ff4d6d" stroke="none"/></svg>
+    <b>ÁTOMO</b><span>LAB</span>
+  </div>
+  <div class="tools">
+    <button id="btnDisc" class="pill" title="Descubrimientos"><span class="ring" id="discRing"></span><b id="discCount">0</b><span class="sl">/<span id="discTotal">0</span></span></button>
+    <button id="btnHands" class="ib" title="Usar tus manos con la cámara"><svg viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11.5v-7a1.5 1.5 0 0 1 3 0V12"/><path d="M14 6.5a1.5 1.5 0 0 1 3 0V13"/><path d="M17 9.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.6-2.2L4.3 14.6a1.6 1.6 0 0 1 2.3-2.2L8 14"/></svg></button>
+    <button id="btnVR" class="ib txt" title="Realidad virtual">VR</button>
+    <button id="btnAR" class="ib txt" title="Realidad aumentada" style="display:none">AR</button>
+    <button id="btnBurner" class="ib" title="Encender/apagar mechero"><svg viewBox="0 0 24 24"><path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 0 1-8 0c0-2 1-3 1.5-4 .5 1.5 1.5 2 2 2C11 7 11.5 5 12 3z"/><path d="M8 21h8M12 17v4"/></svg></button>
+    <button id="btnClear" class="ib" title="Limpiar"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></button>
+    <button id="btnSound" class="ib" title="Sonido"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="w" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+    <button id="btnHelp" class="ib" title="Ayuda"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 2-2.3 3.5M12 17h.01"/></svg></button>
+  </div>
+</header>
+
+<div id="toasts"></div>
+<div id="thermo"><span>🌡</span><div class="tbar"><i></i></div><b>298 K</b><small>Agita rápido para calentar</small></div>
+<div id="elinfo"></div>
+<div id="handsbar"><button id="btnFlip">🔄 Cambiar cámara</button><button id="btnExitHands">✕ Salir de modo manos</button></div>
+
+<div id="hint">
+  <h1>Bienvenido a <em>ÁTOMO LAB</em></h1>
+  <p>Un laboratorio de química en 3D: arma moléculas reales con tus dedos, tus manos o en realidad virtual.</p>
+  <ul>
+    <li><span>👆</span><div><b>Toca o arrastra</b> un elemento de la tabla para sacar un átomo.</div></li>
+    <li><span>🔗</span><div><b>Júntalos</b> y se enlazan solos. Haz H₂O, CO₂, CH₄…</div></li>
+    <li><span>🫨</span><div><b>Agítalos rápido</b> para calentarlos, lánzalos o llévalos al mechero. ¡Hay reacciones explosivas!</div></li>
+  </ul>
+  <div class="actions-row"><button id="hintHelp">Cómo se juega</button><button id="hintGo" class="primary">Ver demo</button></div>
+</div>
+
+<div id="dock"><div class="dockwrap">
+  <div class="dockhead"><div id="quick"></div><button id="btnTable">Tabla <span>▴</span></button></div>
+  <div id="ptable"></div>
+</div></div>
+
+<div id="modal"><div class="sheet" id="modalBody"></div></div>
+
+<script>
+// ================= ELEMENTOS =================
+const EL_RAW = `H|Hidrógeno|1.008
+He|Helio|4.0026
+Li|Litio|6.94
+Be|Berilio|9.0122
+B|Boro|10.81
+C|Carbono|12.011
+N|Nitrógeno|14.007
+O|Oxígeno|15.999
+F|Flúor|18.998
+Ne|Neón|20.180
+Na|Sodio|22.990
+Mg|Magnesio|24.305
+Al|Aluminio|26.982
+Si|Silicio|28.085
+P|Fósforo|30.974
+S|Azufre|32.06
+Cl|Cloro|35.45
+Ar|Argón|39.948
+K|Potasio|39.098
+Ca|Calcio|40.078
+Sc|Escandio|44.956
+Ti|Titanio|47.867
+V|Vanadio|50.942
+Cr|Cromo|51.996
+Mn|Manganeso|54.938
+Fe|Hierro|55.845
+Co|Cobalto|58.933
+Ni|Níquel|58.693
+Cu|Cobre|63.546
+Zn|Zinc|65.38
+Ga|Galio|69.723
+Ge|Germanio|72.630
+As|Arsénico|74.922
+Se|Selenio|78.971
+Br|Bromo|79.904
+Kr|Kriptón|83.798
+Rb|Rubidio|85.468
+Sr|Estroncio|87.62
+Y|Itrio|88.906
+Zr|Circonio|91.224
+Nb|Niobio|92.906
+Mo|Molibdeno|95.95
+Tc|Tecnecio|98
+Ru|Rutenio|101.07
+Rh|Rodio|102.91
+Pd|Paladio|106.42
+Ag|Plata|107.87
+Cd|Cadmio|112.41
+In|Indio|114.82
+Sn|Estaño|118.71
+Sb|Antimonio|121.76
+Te|Telurio|127.60
+I|Yodo|126.90
+Xe|Xenón|131.29
+Cs|Cesio|132.91
+Ba|Bario|137.33
+La|Lantano|138.91
+Ce|Cerio|140.12
+Pr|Praseodimio|140.91
+Nd|Neodimio|144.24
+Pm|Prometio|145
+Sm|Samario|150.36
+Eu|Europio|151.96
+Gd|Gadolinio|157.25
+Tb|Terbio|158.93
+Dy|Disprosio|162.50
+Ho|Holmio|164.93
+Er|Erbio|167.26
+Tm|Tulio|168.93
+Yb|Iterbio|173.05
+Lu|Lutecio|174.97
+Hf|Hafnio|178.49
+Ta|Tantalio|180.95
+W|Wolframio|183.84
+Re|Renio|186.21
+Os|Osmio|190.23
+Ir|Iridio|192.22
+Pt|Platino|195.08
+Au|Oro|196.97
+Hg|Mercurio|200.59
+Tl|Talio|204.38
+Pb|Plomo|207.2
+Bi|Bismuto|208.98
+Po|Polonio|209
+At|Astato|210
+Rn|Radón|222
+Fr|Francio|223
+Ra|Radio|226
+Ac|Actinio|227
+Th|Torio|232.04
+Pa|Protactinio|231.04
+U|Uranio|238.03
+Np|Neptunio|237
+Pu|Plutonio|244
+Am|Americio|243
+Cm|Curio|247
+Bk|Berkelio|247
+Cf|Californio|251
+Es|Einstenio|252
+Fm|Fermio|257
+Md|Mendelevio|258
+No|Nobelio|259
+Lr|Laurencio|266
+Rf|Rutherfordio|267
+Db|Dubnio|268
+Sg|Seaborgio|269
+Bh|Bohrio|270
+Hs|Hasio|277
+Mt|Meitnerio|278
+Ds|Darmstatio|281
+Rg|Roentgenio|282
+Cn|Copernicio|285
+Nh|Nihonio|286
+Fl|Flerovio|289
+Mc|Moscovio|290
+Lv|Livermorio|293
+Ts|Teneso|294
+Og|Oganesón|294`;
+
+const CATS = {
+  nonmetal:   { name: 'No metal',            tile: '#2fd38c' },
+  noble:      { name: 'Gas noble',           tile: '#9f7cff' },
+  halogen:    { name: 'Halógeno',            tile: '#1fc9e6' },
+  alkali:     { name: 'Metal alcalino',      tile: '#ff6b6b' },
+  alkaline:   { name: 'Alcalinotérreo',      tile: '#ff9d4d' },
+  transition: { name: 'Metal de transición', tile: '#4f8fff' },
+  post:       { name: 'Metal del bloque p',  tile: '#8ea2bd' },
+  metalloid:  { name: 'Metaloide',           tile: '#f2c230' },
+  lan:        { name: 'Lantánido',           tile: '#f067b4' },
+  act:        { name: 'Actínido',            tile: '#d36cf0' },
+};
+
+const CPK = {H:'#f4f6fb',He:'#d9ffff',Li:'#cc80ff',Be:'#c2ff00',B:'#ffb5b5',C:'#3d434d',N:'#3a5cff',O:'#ff2a2a',F:'#90e050',Ne:'#b3e3f5',
+Na:'#ab5cf2',Mg:'#8aff00',Al:'#bfa6a6',Si:'#f0c8a0',P:'#ff8000',S:'#ffe330',Cl:'#1ff01f',Ar:'#80d1e3',K:'#8f40d4',Ca:'#3dff00',
+Sc:'#e6e6e6',Ti:'#bfc2c7',V:'#a6a6ab',Cr:'#8a99c7',Mn:'#9c7ac7',Fe:'#e06633',Co:'#f090a0',Ni:'#50d050',Cu:'#c88033',Zn:'#7d80b0',
+Ga:'#c28f8f',Ge:'#668f8f',As:'#bd80e3',Se:'#ffa100',Br:'#a62929',Kr:'#5cb8d1',Rb:'#702eb0',Sr:'#00ff00',Y:'#94ffff',Zr:'#94e0e0',
+Nb:'#73c2c9',Mo:'#54b5b5',Tc:'#3b9e9e',Ru:'#248f8f',Rh:'#0a7d8c',Pd:'#006985',Ag:'#c0c0c0',Cd:'#ffd98f',In:'#a67573',Sn:'#668080',
+Sb:'#9e63b5',Te:'#d47a00',I:'#940094',Xe:'#429eb0',Cs:'#57178f',Ba:'#00c900',La:'#70d4ff',Hf:'#4dc2ff',Ta:'#4da6ff',W:'#2194d6',
+Re:'#267dab',Os:'#266696',Ir:'#175487',Pt:'#d0d0e0',Au:'#ffd123',Hg:'#b8b8d0',Tl:'#a6544d',Pb:'#575961',Bi:'#9e4fb5',Po:'#ab5c00',
+At:'#754f45',Rn:'#428296',Fr:'#420066',Ra:'#007d00',Ac:'#70abfa',Th:'#00baff',Pa:'#00a1ff',U:'#008fff',Np:'#0080ff',Pu:'#006bff'};
+
+// Colores del ensayo a la llama
+const FLAME = {Li:'#ff2048',Na:'#ffc81e',K:'#c07bff',Rb:'#ff3d7f',Cs:'#7d86ff',Ca:'#ff6a1a',Sr:'#ff1f2f',Ba:'#a8ff3a',Cu:'#20ffc0',B:'#55ff55',In:'#5a7bff',Tl:'#3cff6a',Se:'#4d8dff',Zn:'#b0ffd8',Mg:'#ffffff'};
+
+const EN = [2.20,0,0.98,1.57,2.04,2.55,3.04,3.44,3.98,0,0.93,1.31,1.61,1.90,2.19,2.58,3.16,0,0.82,1.00,1.36,1.54,1.63,1.66,1.55,1.83,1.88,1.91,1.90,1.65,1.81,2.01,2.18,2.55,2.96,3.0,0.82,0.95,1.22,1.33,1.6,2.16,1.9,2.2,2.28,2.20,1.93,1.69,1.78,1.96,2.05,2.1,2.66,2.6,0.79,0.89];
+const COV = [31,28,128,96,84,76,71,66,57,58,166,141,121,111,107,105,102,106,203,176,170,160,153,139,139,132,126,124,132,122,122,120,119,120,120,116,220,195,190,175,164,154,147,146,142,139,145,144,142,139,139,138,139,140,244,215];
+
+function elPos(Z) {
+  if (Z === 1) return { p: 1, g: 1 };
+  if (Z === 2) return { p: 1, g: 18 };
+  if (Z <= 10) return { p: 2, g: Z <= 4 ? Z - 2 : Z + 8 };
+  if (Z <= 18) return { p: 3, g: Z <= 12 ? Z - 10 : Z };
+  if (Z <= 36) return { p: 4, g: Z - 18 };
+  if (Z <= 54) return { p: 5, g: Z - 36 };
+  if (Z <= 56) return { p: 6, g: Z - 54 };
+  if (Z <= 71) return { p: 6, g: null, f: 'lan', fi: Z - 57 };
+  if (Z <= 86) return { p: 6, g: Z - 68 };
+  if (Z <= 88) return { p: 7, g: Z - 86 };
+  if (Z <= 103) return { p: 7, g: null, f: 'act', fi: Z - 89 };
+  return { p: 7, g: Z - 100 };
+}
+function elCat(Z, g, f) {
+  if (f) return f;
+  if ([2, 10, 18, 36, 54, 86, 118].includes(Z)) return 'noble';
+  if ([9, 17, 35, 53, 85, 117].includes(Z)) return 'halogen';
+  if ([1, 6, 7, 8, 15, 16, 34].includes(Z)) return 'nonmetal';
+  if ([5, 14, 32, 33, 51, 52].includes(Z)) return 'metalloid';
+  if (g === 1) return 'alkali';
+  if (g === 2) return 'alkaline';
+  if (g >= 3 && g <= 12) return 'transition';
+  return 'post';
+}
+function elValence(Z, g, c) {
+  const o = {1:1,5:3,6:4,7:3,8:2,9:1,14:4,15:3,16:2,17:1,35:1,53:1,85:1,26:3,29:2,47:1,79:1,30:2,13:3,22:4,50:4,82:2,80:2,24:3,25:2,27:2,28:2,34:2,33:3,32:4,51:3,52:2,78:2,46:2};
+  if (o[Z] != null) return o[Z];
+  if (c === 'noble') return 0;
+  if (g === 1) return 1; if (g === 2) return 2; if (g === 13) return 3; if (g === 14) return 4;
+  if (g === 15) return 3; if (g === 16) return 2; if (g === 17) return 1;
+  if (c === 'lan' || c === 'act') return 3;
+  return 2;
+}
+function elCov(Z, p, c) {
+  if (Z <= COV.length) return COV[Z - 1];
+  if (c === 'lan') return 190; if (c === 'act') return 180;
+  if (Z <= 80) return 140; if (Z <= 86) return 146;
+  if (Z === 87) return 260; if (Z === 88) return 221;
+  return 150;
+}
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; }
+
+const ELEMENTS = EL_RAW.split('\n').map((line, i) => {
+  const [sym, name, mass] = line.split('|');
+  const Z = i + 1;
+  const ps = elPos(Z);
+  const cat = elCat(Z, ps.g, ps.f);
+  const valence = elValence(Z, ps.g, cat);
+  const cov = elCov(Z, ps.p, cat);
+  const colorHex = CPK[sym] || CATS[cat].tile;
+  let ve = 0; // electrones de valencia (grupos principales)
+  if (ps.g && ps.g <= 2) ve = ps.g; else if (ps.g && ps.g >= 13) ve = ps.g - 10;
+  if (Z === 1) ve = 1; if (Z === 2) ve = 2;
+  return {
+    Z, sym, name, mass: parseFloat(mass), period: ps.p, group: ps.g, f: ps.f, fi: ps.fi, cat,
+    valence, ve, mainGroup: !!(ps.g && (ps.g <= 2 || ps.g >= 13)),
+    en: EN[Z - 1] || (cat === 'alkali' ? 0.8 : cat === 'alkaline' ? 0.95 : 1.4),
+    color: hexToRgb(colorHex), colorHex,
+    radius: 0.018 + cov * 0.00012,
+    flame: FLAME[sym] ? hexToRgb(FLAME[sym]) : null,
+    flameHex: FLAME[sym] || null,
+  };
+});
+const EL_BY_SYM = Object.fromEntries(ELEMENTS.map(e => [e.sym, e]));
+
+// ================= MOLÉCULAS CONOCIDAS =================
+// [fórmula Hill, fórmula bonita, nombre, dato, dificultad 1-3]
+const MOL_RAW = [
+  ['H2', 'H₂', 'Hidrógeno', 'El elemento más abundante del universo: las estrellas lo usan como combustible.', 1],
+  ['O2', 'O₂', 'Oxígeno', 'Es el 21% del aire que respiras. Fíjate: tiene un enlace doble.', 1],
+  ['N2', 'N₂', 'Nitrógeno', 'El 78% del aire. Su triple enlace es de los más fuertes de la química.', 1],
+  ['F2', 'F₂', 'Flúor', 'El elemento más reactivo que existe: ataca hasta el vidrio.', 1],
+  ['Cl2', 'Cl₂', 'Cloro', 'Gas verde-amarillo que se usa para potabilizar el agua.', 1],
+  ['Br2', 'Br₂', 'Bromo', 'Uno de los dos únicos elementos líquidos a temperatura ambiente.', 1],
+  ['I2', 'I₂', 'Yodo', 'Sus cristales se subliman en un vapor violeta.', 1],
+  ['HO', 'OH·', 'Radical hidroxilo', 'Le falta un enlace: es súper reactivo y "limpia" la atmósfera.', 1],
+  ['H2O', 'H₂O', 'Agua', 'Su forma angular (104,5°) la hace polar: por eso disuelve tantas cosas.', 1],
+  ['H2O2', 'H₂O₂', 'Peróxido de hidrógeno', 'El "agua oxigenada" del botiquín.', 2],
+  ['O3', 'O₃', 'Ozono', 'En la estratosfera nos protege de la radiación ultravioleta.', 2],
+  ['CO2', 'CO₂', 'Dióxido de carbono', 'Lo exhalas al respirar. Es lineal: O=C=O.', 1],
+  ['CO', 'CO', 'Monóxido de carbono', 'Invisible, sin olor y muy tóxico.', 1],
+  ['CH4', 'CH₄', 'Metano', 'Un tetraedro perfecto (109,5°). Principal componente del gas natural.', 1],
+  ['C2H6', 'C₂H₆', 'Etano', 'Dos carbonos unidos por un enlace simple.', 2],
+  ['C2H4', 'C₂H₄', 'Eteno (etileno)', 'Hormona vegetal que hace madurar la fruta.', 2],
+  ['C2H2', 'C₂H₂', 'Etino (acetileno)', 'Su llama llega a ~3.300 °C: se usa para soldar.', 2],
+  ['C3H8', 'C₃H₈', 'Propano', 'El gas de los balones de cocina.', 2],
+  ['C4H10', 'C₄H₁₀', 'Butano', 'El gas de los encendedores.', 3],
+  ['C6H6', 'C₆H₆', 'Benceno', 'Un anillo aromático: sus electrones se reparten por todo el anillo.', 3],
+  ['CH4O', 'CH₃OH', 'Metanol', 'Alcohol de madera: es tóxico, se usa como combustible.', 2],
+  ['C2H6O', 'C₂H₅OH', 'Etanol', 'El alcohol del alcohol gel (y de las bebidas).', 2],
+  ['CH2O', 'CH₂O', 'Formaldehído', 'Se usa para conservar muestras biológicas.', 2],
+  ['CH2O2', 'HCOOH', 'Ácido fórmico', 'Es lo que inyectan las hormigas cuando pican.', 2],
+  ['C2H4O2', 'CH₃COOH', 'Ácido acético', 'Le da el sabor ácido al vinagre.', 3],
+  ['C2H4O', 'C₂H₄O', 'Acetaldehído', 'Huele a manzana verde.', 3],
+  ['C3H6O', 'C₃H₆O', 'Acetona', 'El disolvente del quitaesmalte.', 3],
+  ['C2H6O2', 'C₂H₆O₂', 'Etilenglicol', 'El anticongelante de los autos.', 3],
+  ['C3H8O3', 'C₃H₈O₃', 'Glicerina', 'Hidrata la piel: está en jabones y cremas.', 3],
+  ['C6H12O6', 'C₆H₁₂O₆', 'Glucosa', 'El combustible de tus células. ¡Reto de experto!', 3],
+  ['CH4N2O', 'CO(NH₂)₂', 'Urea', 'Primera molécula orgánica hecha en laboratorio (Wöhler, 1828).', 3],
+  ['CH2O3', 'H₂CO₃', 'Ácido carbónico', 'Lo que hace burbujear las bebidas gaseosas.', 2],
+  ['CHN', 'HCN', 'Ácido cianhídrico', 'Huele a almendras amargas y es extremadamente tóxico.', 2],
+  ['CH5N', 'CH₃NH₂', 'Metilamina', 'Tiene olor a pescado.', 2],
+  ['CS2', 'CS₂', 'Disulfuro de carbono', 'Lineal como el CO₂, pero con azufre.', 2],
+  ['CH3Cl', 'CH₃Cl', 'Clorometano', 'Lo producen naturalmente algas y hongos.', 2],
+  ['CH2Cl2', 'CH₂Cl₂', 'Diclorometano', 'Se usó para descafeinar el café.', 2],
+  ['CHCl3', 'CHCl₃', 'Cloroformo', 'Se usó como anestésico en el siglo XIX.', 2],
+  ['CCl4', 'CCl₄', 'Tetracloruro de carbono', 'Antiguo líquido de extintores.', 2],
+  ['H3N', 'NH₃', 'Amoníaco', 'Base de los fertilizantes que alimentan a medio planeta.', 1],
+  ['H4N2', 'N₂H₄', 'Hidrazina', 'Combustible de cohetes y satélites.', 2],
+  ['NO', 'NO', 'Óxido nítrico', 'Un mensajero químico de tu cuerpo: dilata los vasos sanguíneos.', 1],
+  ['ClH', 'HCl', 'Ácido clorhídrico', 'Tu estómago lo fabrica para digerir.', 1],
+  ['FH', 'HF', 'Fluoruro de hidrógeno', 'Puede disolver vidrio.', 1],
+  ['BrH', 'HBr', 'Bromuro de hidrógeno', 'Un ácido muy fuerte en agua.', 1],
+  ['HI', 'HI', 'Yoduro de hidrógeno', 'El más fuerte de los hidrácidos.', 1],
+  ['H2S', 'H₂S', 'Sulfuro de hidrógeno', 'El olor a huevo podrido.', 1],
+  ['H3P', 'PH₃', 'Fosfina', 'Gas tóxico; se discute si existe en las nubes de Venus.', 1],
+  ['Cl3P', 'PCl₃', 'Tricloruro de fósforo', 'Materia prima para herbicidas.', 2],
+  ['H4Si', 'SiH₄', 'Silano', 'Se inflama solo al contacto con el aire.', 1],
+  ['O2Si', 'SiO₂', 'Dióxido de silicio', 'La arena, el cuarzo y el vidrio.', 1],
+  ['BH3', 'BH₃', 'Borano', 'Plano y triangular: al boro le falta un octeto.', 1],
+  ['BF3', 'BF₃', 'Trifluoruro de boro', 'Molécula plana con ángulos de 120°.', 1],
+  ['ClNa', 'NaCl', 'Cloruro de sodio', 'La sal de mesa: un metal explosivo + un gas tóxico = algo que comes.', 1],
+  ['ClK', 'KCl', 'Cloruro de potasio', 'Se usa como sustituto de la sal.', 1],
+  ['BrK', 'KBr', 'Bromuro de potasio', 'Fue uno de los primeros sedantes.', 1],
+  ['IK', 'KI', 'Yoduro de potasio', 'Protege la tiroides ante la radiación.', 1],
+  ['FNa', 'NaF', 'Fluoruro de sodio', 'Está en las pastas de dientes.', 1],
+  ['FLi', 'LiF', 'Fluoruro de litio', 'Se usa en lentes ópticos para ultravioleta.', 1],
+  ['Cl2Mg', 'MgCl₂', 'Cloruro de magnesio', 'Abundante en el agua de mar.', 2],
+  ['CaCl2', 'CaCl₂', 'Cloruro de calcio', 'Se echa en las calles para derretir hielo.', 2],
+  ['MgO', 'MgO', 'Óxido de magnesio', 'El polvo blanco que deja el magnesio al arder con luz cegadora.', 1],
+  ['CaO', 'CaO', 'Cal viva', 'Al mojarla se calienta muchísimo.', 1],
+  ['Na2O', 'Na₂O', 'Óxido de sodio', 'Ingrediente del vidrio común.', 2],
+  ['OZn', 'ZnO', 'Óxido de zinc', 'La crema blanca del protector solar.', 1],
+  ['CuO', 'CuO', 'Óxido de cobre(II)', 'El negro que aparece en el cobre caliente.', 1],
+  ['FeO', 'FeO', 'Óxido de hierro(II)', 'Un óxido negro del hierro.', 1],
+  ['Fe2O3', 'Fe₂O₃', 'Óxido de hierro(III)', 'El óxido rojo: la herrumbre.', 3],
+  ['Al2O3', 'Al₂O₃', 'Alúmina', 'Los rubíes y zafiros son alúmina con impurezas.', 3],
+  ['AlCl3', 'AlCl₃', 'Cloruro de aluminio', 'El activo de los antitranspirantes.', 2],
+  ['AgCl', 'AgCl', 'Cloruro de plata', 'Se oscurece con la luz: base de la fotografía antigua.', 1],
+  ['HNa', 'NaH', 'Hidruro de sodio', 'Reacciona con agua liberando hidrógeno.', 1],
+  ['HLi', 'LiH', 'Hidruro de litio', 'Se estudió como escudo en reactores espaciales.', 1],
+  ['HNaO', 'NaOH', 'Hidróxido de sodio', 'La soda cáustica que destapa cañerías.', 1],
+  ['HKO', 'KOH', 'Hidróxido de potasio', 'Se usa para hacer jabón blando.', 1],
+  ['HLiO', 'LiOH', 'Hidróxido de litio', 'Limpia el CO₂ del aire en naves espaciales.', 1],
+  ['CaH2O2', 'Ca(OH)₂', 'Hidróxido de calcio', 'La cal apagada de la construcción.', 2],
+  ['H2MgO2', 'Mg(OH)₂', 'Hidróxido de magnesio', 'La leche de magnesia (antiácido).', 2],
+  ['ClHO', 'HClO', 'Ácido hipocloroso', 'Tus glóbulos blancos lo usan contra bacterias.', 2],
+  ['ClNaO', 'NaClO', 'Hipoclorito de sodio', 'El "cloro" de la casa.', 2],
+  ['CHNaO3', 'NaHCO₃', 'Bicarbonato de sodio', 'Polvo de hornear y antiácido.', 3],
+  ['CCaO3', 'CaCO₃', 'Carbonato de calcio', 'Conchas, tiza y mármol.', 3],
+];
+const MOLECULES = {};
+MOL_RAW.forEach(([hill, pretty, name, fact, diff]) => { MOLECULES[hill] = { hill, pretty, name, fact, diff }; });
+const MOL_LIST = MOL_RAW.map(r => MOLECULES[r[0]]);
+
+const SUB = '₀₁₂₃₄₅₆₇₈₉';
+function prettyFormula(hill) { return hill.replace(/\d/g, d => SUB[+d]); }
+function hillFormula(counts) {
+  const keys = Object.keys(counts);
+  let order;
+  if (counts.C) order = ['C', ...(counts.H ? ['H'] : []), ...keys.filter(k => k !== 'C' && k !== 'H').sort()];
+  else order = keys.sort();
+  return order.map(k => k + (counts[k] > 1 ? counts[k] : '')).join('');
+}
+function parseHill(hill) {
+  const out = []; const re = /([A-Z][a-z]?)(\d*)/g; let m;
+  while ((m = re.exec(hill))) { if (!m[1]) break; out.push([m[1], m[2] ? +m[2] : 1]); }
+  return out;
+}
+
+const ACHIEVEMENTS = [
+  { id: 'bond', icon: '🔗', name: 'Primer enlace', desc: 'Junta dos átomos hasta que se enlacen.' },
+  { id: 'double', icon: '⚡', name: 'Doble o nada', desc: 'Forma un enlace doble (prueba O + O).' },
+  { id: 'triple', icon: '🔱', name: 'Triple enlace', desc: 'Forma un enlace triple (prueba N + N).' },
+  { id: 'twohands', icon: '🙌', name: 'A dos manos', desc: 'Sujeta dos átomos a la vez (dos dedos o dos manos).' },
+  { id: 'break', icon: '💥', name: 'Rompe-enlaces', desc: 'Agita una molécula rápido, estírala o caliéntala hasta romperla.' },
+  { id: 'flame', icon: '🔥', name: 'Ensayo a la llama', desc: 'Calienta Na, K, Li, Cu o Sr en el mechero y mira su color.' },
+  { id: 'combust', icon: '🚀', name: 'Combustión', desc: 'Junta H₂ (o metano) caliente con O₂. ¡Bum!' },
+  { id: 'alkali', icon: '🌊', name: 'Metal + agua', desc: 'Lanza un átomo de sodio o potasio contra una molécula de agua.' },
+  { id: 'salt', icon: '🧂', name: 'Salero', desc: 'Haz reaccionar un metal con Cl₂.' },
+  { id: 'recycle', icon: '♻️', name: 'Reciclador', desc: 'Suelta una molécula dentro del anillo reciclador.' },
+  { id: 'five', icon: '🧪', name: 'Químico', desc: 'Descubre 5 moléculas.' },
+  { id: 'twenty', icon: '🏆', name: 'Alquimista', desc: 'Descubre 20 moléculas.' },
+];
+
+// ================= MATEMÁTICA =================
+const V = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, s) => [a[0] * s, a[1] * s, a[2] * s],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  len: a => Math.hypot(a[0], a[1], a[2]),
+  dist: (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]),
+  norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+  lerp: (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t],
+  addTo: (a, b, s = 1) => { a[0] += b[0] * s; a[1] += b[1] * s; a[2] += b[2] * s; return a; },
+};
+const M4 = {
+  ident() { const m = new Float32Array(16); m[0] = m[5] = m[10] = m[15] = 1; return m; },
+  perspective(fovy, aspect, near, far) {
+    const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far), m = new Float32Array(16);
+    m[0] = f / aspect; m[5] = f; m[10] = (far + near) * nf; m[11] = -1; m[14] = 2 * far * near * nf; return m;
+  },
+  lookAt(eye, c, up) {
+    const z = V.norm(V.sub(eye, c)), x = V.norm(V.cross(up, z)), y = V.cross(z, x);
+    return new Float32Array([x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -V.dot(x, eye), -V.dot(y, eye), -V.dot(z, eye), 1]);
+  },
+  mul(a, b) {
+    const o = new Float32Array(16);
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+      let s = 0; for (let k = 0; k < 4; k++) s += a[i + 4 * k] * b[k + 4 * j]; o[i + 4 * j] = s;
+    }
+    return o;
+  },
+  invert(m) {
+    const a = m, o = new Float32Array(16);
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3], a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+      a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11], a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    const b00 = a00 * a11 - a01 * a10, b01 = a00 * a12 - a02 * a10, b02 = a00 * a13 - a03 * a10, b03 = a01 * a12 - a02 * a11,
+      b04 = a01 * a13 - a03 * a11, b05 = a02 * a13 - a03 * a12, b06 = a20 * a31 - a21 * a30, b07 = a20 * a32 - a22 * a30,
+      b08 = a20 * a33 - a23 * a30, b09 = a21 * a32 - a22 * a31, b10 = a21 * a33 - a23 * a31, b11 = a22 * a33 - a23 * a32;
+    let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+    if (!det) return M4.ident(); det = 1 / det;
+    o[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det; o[1] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+    o[2] = (a31 * b05 - a32 * b04 + a33 * b03) * det; o[3] = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+    o[4] = (a12 * b08 - a10 * b11 - a13 * b07) * det; o[5] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+    o[6] = (a32 * b02 - a30 * b05 - a33 * b01) * det; o[7] = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+    o[8] = (a10 * b10 - a11 * b08 + a13 * b06) * det; o[9] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+    o[10] = (a30 * b04 - a31 * b02 + a33 * b00) * det; o[11] = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+    o[12] = (a11 * b07 - a10 * b09 - a12 * b06) * det; o[13] = (a00 * b09 - a01 * b07 + a02 * b06) * det;
+    o[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det; o[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
+    return o;
+  },
+  basis(x, y, z, t) { return new Float32Array([x[0], x[1], x[2], 0, y[0], y[1], y[2], 0, z[0], z[1], z[2], 0, t[0], t[1], t[2], 1]); },
+  ts(t, s) { return M4.basis([s, 0, 0], [0, s, 0], [0, 0, s], t); },
+  rotX(a) { const c = Math.cos(a), s = Math.sin(a); return M4.basis([1, 0, 0], [0, c, s], [0, -s, c], [0, 0, 0]); },
+  rotY(a) { const c = Math.cos(a), s = Math.sin(a); return M4.basis([c, 0, -s], [0, 1, 0], [s, 0, c], [0, 0, 0]); },
+  trans(t) { return M4.basis([1, 0, 0], [0, 1, 0], [0, 0, 1], t); },
+  xform(m, p) { return [m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12], m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13], m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]]; },
+  xdir(m, p) { return [m[0] * p[0] + m[4] * p[1] + m[8] * p[2], m[1] * p[0] + m[5] * p[1] + m[9] * p[2], m[2] * p[0] + m[6] * p[1] + m[10] * p[2]]; },
+};
+// ruido de enlace (cilindros) -> perpendicular estable
+function perpTo(a) { const u = Math.abs(a[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]; return V.norm(V.cross(a, u)); }
+
+// ================= RENDERER WebGL2 =================
+const SH = {
+  litV: `#version 300 es
+  in vec3 aPos; in vec3 aNor; uniform mat4 uModel, uView, uProj; out vec3 vN; out vec3 vW;
+  void main(){ vec4 w = uModel*vec4(aPos,1.); vW=w.xyz; vN=mat3(uModel)*aNor; gl_Position=uProj*uView*w; }`,
+  litF: `#version 300 es
+  precision highp float; in vec3 vN; in vec3 vW; uniform vec3 uColor, uEmis, uCam; uniform float uAlpha, uGloss, uRim;
+  out vec4 o;
+  void main(){
+    vec3 N=normalize(vN); vec3 Vv=normalize(uCam-vW);
+    if(!gl_FrontFacing) N=-N;
+    vec3 L1=normalize(vec3(0.45,1.0,0.65)); vec3 L2=normalize(vec3(-0.8,0.25,-0.35));
+    float d1=max(dot(N,L1),0.), d2=max(dot(N,L2),0.);
+    vec3 hemi=mix(vec3(0.16,0.13,0.22), vec3(0.50,0.56,0.72), N.y*0.5+0.5);
+    vec3 c=uColor*(hemi*0.75 + d1*0.85*vec3(1.,0.97,0.92) + d2*0.35*vec3(0.55,0.65,1.));
+    vec3 H=normalize(L1+Vv); float s=pow(max(dot(N,H),0.),70.)*uGloss;
+    vec3 H2=normalize(L2+Vv); s+=pow(max(dot(N,H2),0.),30.)*uGloss*0.25;
+    float fr=pow(1.-max(dot(N,Vv),0.),2.5);
+    c+= s + fr*uRim*vec3(0.55,0.8,1.) + uEmis;
+    o=vec4(c*uAlpha,uAlpha);
+  }`,
+  quadV: `#version 300 es
+  in vec3 aPos; in vec2 aUV; uniform mat4 uModel, uView, uProj; out vec2 vUV;
+  void main(){ vUV=aUV; gl_Position=uProj*uView*uModel*vec4(aPos,1.); }`,
+  quadF: `#version 300 es
+  precision highp float; in vec2 vUV; uniform sampler2D uTex; uniform int uMode; uniform vec3 uColor; uniform float uAlpha, uTime;
+  out vec4 o;
+  void main(){
+    vec4 c;
+    if(uMode==0){ c=texture(uTex,vUV); c.rgb*=uColor; }
+    else if(uMode==1){ // anillo
+      float r=length(vUV-0.5)*2.; float ring=smoothstep(0.80,0.86,r)*(1.-smoothstep(0.93,0.99,r));
+      float glow=exp(-pow((r-0.9)*9.,2.))*0.45;
+      c=vec4(uColor,1.)*(ring+glow);
+    } else if(uMode==2){ // halo suave
+      float r=length(vUV-0.5)*2.; float g=exp(-r*r*3.5)*(1.-smoothstep(0.85,1.,r)); c=vec4(uColor,1.)*g;
+    } else { // anillo punteado giratorio
+      vec2 p=vUV-0.5; float r=length(p)*2.; float a=atan(p.y,p.x);
+      float dash=step(0.5,fract(a*6./3.14159+uTime*0.6));
+      float ring=smoothstep(0.86,0.9,r)*(1.-smoothstep(0.95,0.99,r))*dash;
+      c=vec4(uColor,1.)*ring;
+    }
+    o=vec4(c.rgb*uAlpha, c.a*uAlpha);
+  }`,
+  partV: `#version 300 es
+  in vec3 aPos; in vec4 aCol; in float aSize; uniform mat4 uView, uProj; uniform float uScale; out vec4 vCol;
+  void main(){ vCol=aCol; gl_Position=uProj*uView*vec4(aPos,1.); gl_PointSize=clamp(aSize*uScale/gl_Position.w,1.,256.); }`,
+  partF: `#version 300 es
+  precision highp float; in vec4 vCol; out vec4 o;
+  void main(){ vec2 p=gl_PointCoord-0.5; float r=length(p)*2.; float a=exp(-r*r*3.)*(1.-smoothstep(0.8,1.,r)); o=vec4(vCol.rgb*vCol.a*a, 0.); }`,
+  skyV: `#version 300 es
+  in vec3 aPos; in vec3 aNor; uniform mat4 uModel, uView, uProj; out vec3 vD;
+  void main(){ vD=aPos; vec4 p=uProj*uView*uModel*vec4(aPos,1.); gl_Position=p.xyww; }`,
+  skyF: `#version 300 es
+  precision highp float; in vec3 vD; out vec4 o; uniform float uTime;
+  float h(vec3 p){ p=fract(p*0.3183099+.1); p*=17.; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+  void main(){
+    vec3 d=normalize(vD); float y=d.y;
+    vec3 top=vec3(0.035,0.04,0.11), mid=vec3(0.10,0.06,0.20), hor=vec3(0.20,0.10,0.28), bot=vec3(0.02,0.02,0.05);
+    vec3 c= y>0. ? mix(hor, mix(mid, top, smoothstep(0.1,0.8,y)), smoothstep(0.,0.25,y)) : mix(hor*0.6, bot, smoothstep(0.,0.3,-y));
+    c+=vec3(0.05,0.18,0.22)*exp(-pow((y-0.02)*9.,2.))*0.6;
+    vec3 q=floor(d*180.); float s=h(q); float tw=0.6+0.4*sin(uTime*2.+s*40.);
+    if(s>0.996 && y>0.05) c+=vec3(0.8,0.85,1.)*tw*(s-0.996)*220.*smoothstep(0.05,0.3,y);
+    o=vec4(c,1.);
+  }`,
+  floorV: `#version 300 es
+  in vec3 aPos; in vec2 aUV; uniform mat4 uModel, uView, uProj; out vec3 vW;
+  void main(){ vec4 w=uModel*vec4(aPos,1.); vW=w.xyz; gl_Position=uProj*uView*w; }`,
+  floorF: `#version 300 es
+  precision highp float; in vec3 vW; uniform vec3 uCenter; out vec4 o;
+  float grid(vec2 p, float s, float w){ vec2 g=abs(fract(p/s-0.5)-0.5)*s; vec2 fw=fwidth(p)*w; vec2 l=1.-smoothstep(vec2(0.),fw,g); return max(l.x,l.y); }
+  void main(){
+    vec2 p=vW.xz-uCenter.xz; float d=length(p);
+    float g=grid(vW.xz,0.1,1.2)*0.22+grid(vW.xz,0.5,1.6)*0.45;
+    float fade=exp(-d*d*0.35);
+    vec3 col=vec3(0.15,0.85,0.95)*g*fade + vec3(0.25,0.12,0.45)*exp(-d*d*2.5)*0.35;
+    float a=clamp(g*fade*0.8+exp(-d*d*2.5)*0.3,0.,1.);
+    o=vec4(col, a*0.9);
+  }`,
+};
+
+const ATTR = { aPos: 0, aNor: 1, aUV: 2, aCol: 3, aSize: 4 };
+class Renderer {
+  constructor(canvas) {
+    const gl = canvas.getContext('webgl2', { antialias: true, alpha: true, premultipliedAlpha: true, xrCompatible: true, preserveDrawingBuffer: false });
+    if (!gl) throw new Error('WebGL2 no disponible');
+    this.gl = gl; this.canvas = canvas;
+    this.prog = {
+      lit: this.program(SH.litV, SH.litF), quad: this.program(SH.quadV, SH.quadF),
+      part: this.program(SH.partV, SH.partF), sky: this.program(SH.skyV, SH.skyF), floor: this.program(SH.floorV, SH.floorF),
+    };
+    this.mesh = {
+      sphere: this.sphereMesh(32, 22), lowSphere: this.sphereMesh(12, 8), cyl: this.cylMesh(18),
+      torus: this.torusMesh(64, 14, 1, 0.055), quad: this.quadMesh(), cone: this.coneMesh(24),
+    };
+    this.partBuf = gl.createBuffer(); this.partVao = gl.createVertexArray();
+    gl.bindVertexArray(this.partVao); gl.bindBuffer(gl.ARRAY_BUFFER, this.partBuf);
+    const P = this.prog.part;
+    const st = 8 * 4;
+    gl.enableVertexAttribArray(P.attr.aPos); gl.vertexAttribPointer(P.attr.aPos, 3, gl.FLOAT, false, st, 0);
+    gl.enableVertexAttribArray(P.attr.aSize); gl.vertexAttribPointer(P.attr.aSize, 1, gl.FLOAT, false, st, 12);
+    gl.enableVertexAttribArray(P.attr.aCol); gl.vertexAttribPointer(P.attr.aCol, 4, gl.FLOAT, false, st, 16);
+    gl.bindVertexArray(null);
+    this.whiteTex = this.texFromPixels(new Uint8Array([255, 255, 255, 255]), 1, 1);
+    this.time = 0;
+  }
+  program(vs, fs) {
+    const gl = this.gl;
+    const mk = (t, src) => { const sh = gl.createShader(t); gl.shaderSource(sh, src); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+    const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs));
+    for (const k in ATTR) gl.bindAttribLocation(p, ATTR[k], k);
+    gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const uni = {};
+    const nu = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); for (let i = 0; i < nu; i++) { const n = gl.getActiveUniform(p, i).name; uni[n] = gl.getUniformLocation(p, n); }
+    return { p, uni, attr: ATTR };
+  }
+  buildMesh(pos, nor, uv, idx) {
+    const gl = this.gl, vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const put = (data, n, name) => {
+      const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(ATTR[name]); gl.vertexAttribPointer(ATTR[name], n, gl.FLOAT, false, 0, 0);
+    };
+    put(pos, 3, 'aPos'); if (nor) put(nor, 3, 'aNor'); if (uv) put(uv, 2, 'aUV');
+    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    return { vao, count: idx.length };
+  }
+  sphereMesh(seg, rings) {
+    const pos = [], nor = [], idx = [];
+    for (let r = 0; r <= rings; r++) { const th = r / rings * Math.PI; for (let s = 0; s <= seg; s++) { const ph = s / seg * Math.PI * 2; const x = Math.sin(th) * Math.cos(ph), y = Math.cos(th), z = Math.sin(th) * Math.sin(ph); pos.push(x, y, z); nor.push(x, y, z); } }
+    for (let r = 0; r < rings; r++) for (let s = 0; s < seg; s++) { const a = r * (seg + 1) + s, b = a + seg + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+    return this.buildMesh(pos, nor, null, idx);
+  }
+  cylMesh(seg) {
+    const pos = [], nor = [], idx = [];
+    for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2, x = Math.cos(a), z = Math.sin(a); pos.push(x, 0, z, x, 1, z); nor.push(x, 0, z, x, 0, z); }
+    for (let i = 0; i < seg; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
+    return this.buildMesh(pos, nor, null, idx);
+  }
+  coneMesh(seg) {
+    const pos = [], nor = [], idx = [];
+    for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2, x = Math.cos(a), z = Math.sin(a); pos.push(x, 0, z, x * 0.55, 1, z * 0.55); const n = V.norm([x, 0.45, z]); nor.push(...n, ...n); }
+    for (let i = 0; i < seg; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
+    // tapa superior
+    const c = pos.length / 3; pos.push(0, 1, 0); nor.push(0, 1, 0);
+    for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2; pos.push(Math.cos(a) * 0.55, 1, Math.sin(a) * 0.55); nor.push(0, 1, 0); }
+    for (let i = 0; i < seg; i++) idx.push(c, c + 1 + i + 1, c + 1 + i);
+    return this.buildMesh(pos, nor, null, idx);
+  }
+  torusMesh(seg, sides, R, r) {
+    const pos = [], nor = [], idx = [];
+    for (let i = 0; i <= seg; i++) { const u = i / seg * Math.PI * 2; for (let j = 0; j <= sides; j++) { const v = j / sides * Math.PI * 2; const cx = Math.cos(u), cy = Math.sin(u); const nx = Math.cos(v) * cx, ny = Math.cos(v) * cy, nz = Math.sin(v); pos.push(R * cx + r * nx, R * cy + r * ny, r * nz); nor.push(nx, ny, nz); } }
+    for (let i = 0; i < seg; i++) for (let j = 0; j < sides; j++) { const a = i * (sides + 1) + j, b = a + sides + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+    return this.buildMesh(pos, nor, null, idx);
+  }
+  quadMesh() { return this.buildMesh([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0], [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], [0, 1, 1, 1, 1, 0, 0, 0], [0, 1, 2, 0, 2, 3]); }
+  texFromPixels(px, w, h) { const gl = this.gl, t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, px); return t; }
+  texFromCanvas(cv, tex) {
+    const gl = this.gl, t = tex || gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  }
+  setCamera(view, proj, camPos, vpH) { this.view = view; this.proj = proj; this.cam = camPos; this.vpH = vpH; }
+  use(prog) { const gl = this.gl; gl.useProgram(prog.p); if (prog.uni.uView) gl.uniformMatrix4fv(prog.uni.uView, false, this.view); if (prog.uni.uProj) gl.uniformMatrix4fv(prog.uni.uProj, false, this.proj); if (prog.uni.uCam) gl.uniform3fv(prog.uni.uCam, this.cam); if (prog.uni.uTime) gl.uniform1f(prog.uni.uTime, this.time); return prog.uni; }
+  beginLit() { const gl = this.gl; gl.enable(gl.DEPTH_TEST); gl.depthMask(true); gl.disable(gl.BLEND); gl.enable(gl.CULL_FACE); this.u = this.use(this.prog.lit); }
+  lit(mesh, model, color, emis = [0, 0, 0], gloss = 0.8, rim = 0.35, alpha = 1) {
+    const gl = this.gl, u = this.u;
+    gl.uniformMatrix4fv(u.uModel, false, model); gl.uniform3fv(u.uColor, color); gl.uniform3fv(u.uEmis, emis);
+    gl.uniform1f(u.uGloss, gloss); gl.uniform1f(u.uRim, rim); gl.uniform1f(u.uAlpha, alpha);
+    gl.bindVertexArray(mesh.vao); gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+  litTransparentBegin() { const gl = this.gl; gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); gl.disable(gl.CULL_FACE); this.u = this.use(this.prog.lit); }
+  sky() {
+    const gl = this.gl; gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE);
+    const u = this.use(this.prog.sky); gl.uniformMatrix4fv(u.uModel, false, M4.ts(this.cam, 50));
+    gl.bindVertexArray(this.mesh.sphere.vao); gl.drawElements(gl.TRIANGLES, this.mesh.sphere.count, gl.UNSIGNED_SHORT, 0);
+    gl.enable(gl.DEPTH_TEST); gl.depthMask(true);
+  }
+  floor(y, center) {
+    const gl = this.gl; gl.enable(gl.DEPTH_TEST); gl.depthMask(false); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.disable(gl.CULL_FACE);
+    const u = this.use(this.prog.floor); gl.uniform3fv(u.uCenter, center);
+    const m = M4.basis([12, 0, 0], [0, 0, -12], [0, 1, 0], [center[0], y, center[2]]);
+    gl.uniformMatrix4fv(u.uModel, false, m); gl.bindVertexArray(this.mesh.quad.vao); gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    gl.depthMask(true);
+  }
+  beginQuads(additive = false) {
+    const gl = this.gl; gl.enable(gl.DEPTH_TEST); gl.depthMask(false); gl.enable(gl.BLEND); gl.disable(gl.CULL_FACE);
+    if (additive) gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE); else gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    this.u = this.use(this.prog.quad); gl.bindVertexArray(this.mesh.quad.vao);
+  }
+  quad(model, tex, mode = 0, color = [1, 1, 1], alpha = 1) {
+    const gl = this.gl, u = this.u; gl.uniformMatrix4fv(u.uModel, false, model); gl.uniform1i(u.uMode, mode);
+    gl.uniform3fv(u.uColor, color); gl.uniform1f(u.uAlpha, alpha);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex || this.whiteTex); gl.uniform1i(u.uTex, 0);
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+  }
+  particles(data, n) {
+    if (!n) return; const gl = this.gl; gl.enable(gl.DEPTH_TEST); gl.depthMask(false); gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE);
+    const u = this.use(this.prog.part); gl.uniform1f(u.uScale, this.vpH * this.proj[5] * 0.5);
+    gl.bindVertexArray(this.partVao); gl.bindBuffer(gl.ARRAY_BUFFER, this.partBuf); gl.bufferData(gl.ARRAY_BUFFER, data.subarray(0, n * 8), gl.DYNAMIC_DRAW);
+    gl.drawArrays(gl.POINTS, 0, n); gl.depthMask(true);
+  }
+}
+
+// ================= SIMULACIÓN QUÍMICA =================
+const PHYS = {
+  kBond: 900, cBond: 26, kAngle: 260, kRep: 1800, damp: 2.0,
+  contact: 1.18, attractRange: 2.1, attract: 7,
+  breakT: 0.85, bondMaxT: 0.68, cool: 0.45,
+};
+
+class Sim {
+  constructor() {
+    this.atoms = []; this.bonds = []; this.mols = []; this.nextId = 1; this.t = 0;
+    this.events = []; this.dirty = true;
+    this.bounds = { c: [0, 0, 0], h: [0.3, 0.25, 0.25] };
+    this.burner = { pos: [0.25, -0.18, 0], on: true };   // centro de la boca del mechero
+    this.recycler = { pos: [-0.25, -0.12, 0], r: 0.06 };
+    this.reactCool = new Map();
+  }
+  emit(type, data) { this.events.push({ type, ...data }); }
+  free(a) { let s = 0; for (const b of a.bonds) s += b.order; return a.valence - s; }
+  bondBetween(a, b) { for (const bd of a.bonds) if (bd.a === b || bd.b === b) return bd; return null; }
+  other(bd, a) { return bd.a === a ? bd.b : bd.a; }
+  rest(a, b, order) { return (a.r + b.r) * 1.5 * (order === 3 ? 0.86 : order === 2 ? 0.92 : 1); }
+
+  spawn(el, pos, vel = [0, 0, 0]) {
+    const a = { id: this.nextId++, el, pos: pos.slice(), vel: vel.slice(), f: [0, 0, 0], r: el.radius, valence: el.valence,
+      bonds: [], temp: 0, grab: null, born: this.t, flash: 1, mol: null, gvel: [0, 0, 0], acc: 0, cool: 0, flameT: 0 };
+    this.atoms.push(a); this.dirty = true; this.emit('spawn', { atom: a });
+    return a;
+  }
+  remove(list) {
+    const set = new Set(list);
+    for (const a of list) for (const bd of [...a.bonds]) this.unbond(bd, true);
+    this.atoms = this.atoms.filter(a => !set.has(a)); this.dirty = true;
+  }
+  clear() { this.atoms = []; this.bonds = []; this.mols = []; this.dirty = true; }
+
+  bond(a, b, order = 1) {
+    // si un átomo no tiene valencia libre, "abre" uno de sus enlaces múltiples
+    for (const x of [a, b]) {
+      if (this.free(x) <= 0) {
+        const multi = x.bonds.filter(bd => bd.order > 1).sort((p, q) => q.order - p.order)[0];
+        if (!multi) return null; multi.order--; multi.rest = this.rest(multi.a, multi.b, multi.order);
+      }
+    }
+    const bd = { a, b, order, rest: this.rest(a, b, order), born: this.t };
+    a.bonds.push(bd); b.bonds.push(bd); this.bonds.push(bd);
+    a.flash = b.flash = 1; this.dirty = true;
+    this.emit('bond', { a, b, order, pos: V.lerp(a.pos, b.pos, 0.5) });
+    return bd;
+  }
+  unbond(bd, silent) {
+    bd.a.bonds = bd.a.bonds.filter(x => x !== bd); bd.b.bonds = bd.b.bonds.filter(x => x !== bd);
+    this.bonds = this.bonds.filter(x => x !== bd); this.dirty = true;
+    if (!silent) this.emit('break', { a: bd.a, b: bd.b, pos: V.lerp(bd.a.pos, bd.b.pos, 0.5) });
+  }
+  canAccept(a) {
+    if (a.valence <= 0) return false;
+    if (this.free(a) > 0) return true;
+    return a.bonds.some(bd => bd.order > 1);
+  }
+  graphDist(a, b, max) {
+    let frontier = [a], seen = new Set([a]);
+    for (let d = 1; d <= max; d++) {
+      const nx = [];
+      for (const x of frontier) for (const bd of x.bonds) { const y = this.other(bd, x); if (y === b) return d; if (!seen.has(y)) { seen.add(y); nx.push(y); } }
+      frontier = nx;
+    }
+    return Infinity;
+  }
+
+  // ---------- moléculas ----------
+  rebuildMols() {
+    const parent = new Map(); const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+    for (const a of this.atoms) parent.set(a, a);
+    for (const bd of this.bonds) { const r1 = find(bd.a), r2 = find(bd.b); if (r1 !== r2) parent.set(r1, r2); }
+    const groups = new Map();
+    for (const a of this.atoms) { const r = find(a); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(a); }
+    const old = new Map(this.mols.map(m => [m.key, m]));
+    this.mols = [];
+    for (const atoms of groups.values()) {
+      const counts = {}; for (const a of atoms) counts[a.el.sym] = (counts[a.el.sym] || 0) + 1;
+      const hill = hillFormula(counts);
+      const key = Math.min(...atoms.map(a => a.id)) + ':' + hill;
+      const prev = old.get(key);
+      const m = { key, atoms, hill, counts, info: atoms.length > 1 || MOLECULES[hill] ? MOLECULES[hill] || null : null,
+        since: prev ? prev.since : this.t, announced: prev ? prev.announced : false, center: [0, 0, 0], top: 0, labelA: prev ? prev.labelA : 0 };
+      for (const a of atoms) a.mol = m;
+      this.mols.push(m);
+    }
+    this.dirty = false;
+  }
+
+  // ---------- agarre ----------
+  grab(a, key) { a.grab = { key, target: a.pos.slice(), last: a.pos.slice() }; a.gvel = [0, 0, 0]; a.acc = 0; this.emit('grab', { atom: a }); }
+  setTarget(a, p) { if (a.grab) a.grab.target = p.slice(); }
+  release(a, vel) {
+    if (!a.grab) return; a.grab = null;
+    const v = vel || a.gvel; const sp = V.len(v); const mx = 3.5;
+    a.vel = sp > mx ? V.mul(v, mx / sp) : v.slice();
+    // reciclador
+    if (V.dist(a.pos, this.recycler.pos) < this.recycler.r * 1.6) {
+      const atoms = a.mol ? a.mol.atoms : [a];
+      this.emit('recycle', { atoms: atoms.map(x => ({ pos: x.pos.slice(), color: x.el.color })), pos: this.recycler.pos.slice() });
+      this.remove(atoms); return;
+    }
+    this.emit('release', { atom: a });
+  }
+
+  // ---------- reacciones ----------
+  tryReaction(a, b) {
+    const ma = a.mol, mb = b.mol; if (!ma || !mb || ma === mb) return false;
+    const k = ma.key < mb.key ? ma.key + '|' + mb.key : mb.key + '|' + ma.key;
+    if ((this.reactCool.get(k) || 0) > this.t) return false;
+    const isAlkali = x => x.el.cat === 'alkali';
+    const isMetal = x => ['alkali', 'alkaline', 'transition', 'post'].includes(x.el.cat);
+    const fuel = m => (m.counts.H || m.counts.C) && Object.keys(m.counts).every(s => 'CHO'.includes(s) && s.length === 1) && !['H2O', 'CO2', 'H2O2', 'CO', 'HO', 'CH2O3', 'O2', 'O3'].includes(m.hill);
+    const halX2 = m => m.atoms.length === 2 && m.atoms[0].el.cat === 'halogen' && m.atoms[1].el.cat === 'halogen';
+    // 1) metal alcalino + agua
+    for (const [x, m] of [[a, mb], [b, ma]]) {
+      if (isAlkali(x) && this.free(x) > 0 && m.hill === 'H2O') { this.reactCool.set(k, this.t + 1); this.alkaliWater(x, m); return true; }
+    }
+    // 2) metal + halógeno diatómico -> sal
+    for (const [x, m] of [[a, mb], [b, ma]]) {
+      if (isMetal(x) && this.free(x) > 0 && halX2(m)) { this.reactCool.set(k, this.t + 0.5); this.metalHalogen(x, m); return true; }
+    }
+    // 3) combustión: combustible + O2 con calor
+    const hot = Math.max(...ma.atoms.map(q => q.temp), ...mb.atoms.map(q => q.temp));
+    if (hot > 0.5) {
+      let F = null, O = null;
+      if (fuel(ma) && mb.hill === 'O2') { F = ma; O = mb; } else if (fuel(mb) && ma.hill === 'O2') { F = mb; O = ma; }
+      if (F) { this.reactCool.set(k, this.t + 1); this.combust(F, O); return true; }
+    }
+    return false;
+  }
+  center(atoms) { const c = [0, 0, 0]; for (const a of atoms) V.addTo(c, a.pos); return V.mul(c, 1 / atoms.length); }
+  kick(atoms, c, s) { for (const a of atoms) { const d = V.norm(V.add(V.sub(a.pos, c), [Math.random() * 0.02 - 0.01, Math.random() * 0.02, Math.random() * 0.02 - 0.01])); V.addTo(a.vel, d, s * (0.6 + Math.random() * 0.6)); } }
+  alkaliWater(M, water) {
+    const O = water.atoms.find(x => x.el.sym === 'O'); const Hs = water.atoms.filter(x => x.el.sym === 'H');
+    if (!O || Hs.length < 2) return;
+    const H = Hs.sort((p, q) => V.dist(q.pos, M.pos) - V.dist(p.pos, M.pos))[0]; // el H más lejano sale volando
+    this.unbond(this.bondBetween(O, H), true);
+    this.bond(M, O, 1);
+    const c = this.center([M, O, H]);
+    V.addTo(H.vel, V.norm(V.sub(H.pos, O.pos)), 2.2);
+    for (const x of [M, O, H, ...Hs]) x.temp = Math.max(x.temp, 0.6);
+    const power = { Li: 0.6, Na: 1, K: 1.4, Rb: 1.8, Cs: 2.2, Fr: 2.4 }[M.el.sym] || 1;
+    this.heatAround(c, 0.14, 0.25 * power);
+    this.emit('reaction', { kind: 'alkali', pos: c, power, color: M.el.flame || [1, 0.8, 0.2], metal: M.el });
+  }
+  metalHalogen(M, X2) {
+    const [X1, X2b] = X2.atoms; const bd = this.bondBetween(X1, X2b); if (!bd) return;
+    const near = V.dist(X1.pos, M.pos) < V.dist(X2b.pos, M.pos) ? X1 : X2b;
+    this.unbond(bd, true); this.bond(M, near, 1);
+    const c = this.center([M, X1, X2b]); this.kick([X1 === near ? X2b : X1], c, 0.6);
+    M.temp = Math.max(M.temp, 0.45); near.temp = Math.max(near.temp, 0.45);
+    this.emit('reaction', { kind: 'salt', pos: c, power: 0.8, color: [1, 1, 0.85] });
+  }
+  combust(F, O2) {
+    // reúne combustible + todo el O2 cercano
+    const c0 = this.center(F.atoms);
+    const pool = [...F.atoms];
+    const used = new Set([F, O2]);
+    const o2s = [O2, ...this.mols.filter(m => m !== O2 && m.hill === 'O2' && V.dist(this.center(m.atoms), c0) < 0.22)];
+    let needO = (F.counts.C || 0) * 2 + (F.counts.H || 0) / 2 - (F.counts.O || 0);
+    for (const m of o2s) { if (needO <= 0) break; pool.push(...m.atoms); used.add(m); needO -= 2; }
+    for (const a of pool) for (const bd of [...a.bonds]) this.unbond(bd, true);
+    const C = pool.filter(a => a.el.sym === 'C'), H = pool.filter(a => a.el.sym === 'H'), Os = pool.filter(a => a.el.sym === 'O');
+    const take = (list, from, n) => { const out = []; for (let i = 0; i < n && list.length; i++) { list.sort((p, q) => V.dist(p.pos, from.pos) - V.dist(q.pos, from.pos)); out.push(list.shift()); } return out; };
+    const place = (center, atom, dir) => { atom.pos = V.add(center.pos, V.mul(dir, this.rest(center, atom, 1))); };
+    for (const c of C) { const os = take(Os, c, 2); os.forEach((o, i) => { place(c, o, [i ? -1 : 1, 0, 0]); this.bond(c, o, 2); }); }
+    while (H.length && Os.length) {
+      const o = Os.shift(); const hs = take(H, o, 2);
+      hs.forEach((h, i) => { place(o, h, V.norm([i ? -0.8 : 0.8, 0.6, 0])); this.bond(o, h, 1); });
+    }
+    while (Os.length >= 2) { const o = Os.shift(), p = take(Os, o, 1)[0]; place(o, p, [1, 0, 0]); this.bond(o, p, 2); }
+    while (H.length >= 2) { const h = H.shift(), p = take(H, h, 1)[0]; place(h, p, [1, 0, 0]); this.bond(h, p, 1); }
+    const c = this.center(pool);
+    for (const a of pool) { a.temp = Math.max(a.temp, 0.62); a.flash = 1; }
+    this.kick(pool, c, 0.9);
+    this.heatAround(c, 0.2, 0.55, pool);
+    this.emit('reaction', { kind: 'combust', pos: c, power: 1 + pool.length * 0.08, color: [1, 0.55, 0.15] });
+  }
+  heatAround(c, r, amt, skip = []) {
+    const s = new Set(skip);
+    for (const a of this.atoms) { if (s.has(a)) continue; const d = V.dist(a.pos, c); if (d < r) { a.temp += amt * (1 - d / r); V.addTo(a.vel, V.norm(V.sub(a.pos, c)), 1.2 * (1 - d / r)); } }
+  }
+
+  // ---------- paso de física ----------
+  step(dt) {
+    dt = Math.min(dt, 1 / 30);
+    const sub = 3, h = dt / sub;
+    for (let s = 0; s < sub; s++) this.substep(h);
+    this.t += dt;
+    this.chemistry(dt);
+    if (this.dirty) this.rebuildMols();
+    // info de moléculas
+    for (const m of this.mols) {
+      m.center = this.center(m.atoms); let top = -1e9; for (const a of m.atoms) top = Math.max(top, a.pos[1] + a.r); m.top = top;
+      const known = !!m.info && m.atoms.length > 0;
+      if (known && !m.announced && this.t - m.since > 0.5 && !m.atoms.some(a => a.temp > 0.7)) { m.announced = true; this.emit('molecule', { mol: m }); }
+    }
+  }
+  substep(h) {
+    const A = this.atoms, P = PHYS;
+    for (const a of A) { a.f[0] = a.f[1] = a.f[2] = 0; }
+    // enlaces
+    for (const bd of this.bonds) {
+      const a = bd.a, b = bd.b; const d = V.sub(b.pos, a.pos); const L = V.len(d) || 1e-6; const n = V.mul(d, 1 / L);
+      const rv = V.dot(V.sub(b.vel, a.vel), n);
+      let F = P.kBond * (L - bd.rest) + P.cBond * rv; F = Math.max(-60, Math.min(60, F));
+      V.addTo(a.f, n, F); V.addTo(b.f, n, -F);
+    }
+    // ángulos (VSEPR)
+    for (const c of A) {
+      const nb = c.bonds; if (nb.length < 2) continue;
+      const theta = this.idealAngle(c) * Math.PI / 180;
+      for (let i = 0; i < nb.length; i++) for (let j = i + 1; j < nb.length; j++) {
+        const x = this.other(nb[i], c), y = this.other(nb[j], c);
+        const ri = nb[i].rest, rj = nb[j].rest; const target = Math.sqrt(ri * ri + rj * rj - 2 * ri * rj * Math.cos(theta));
+        const d = V.sub(y.pos, x.pos); const L = V.len(d) || 1e-6; const n = V.mul(d, 1 / L);
+        const rv = V.dot(V.sub(y.vel, x.vel), n);
+        let F = P.kAngle * (L - target) + 10 * rv; F = Math.max(-30, Math.min(30, F));
+        V.addTo(x.f, n, F); V.addTo(y.f, n, -F);
+      }
+    }
+    // repulsión / atracción entre átomos no enlazados
+    for (let i = 0; i < A.length; i++) {
+      const a = A[i];
+      for (let j = i + 1; j < A.length; j++) {
+        const b = A[j];
+        const dx = b.pos[0] - a.pos[0], dy = b.pos[1] - a.pos[1], dz = b.pos[2] - a.pos[2];
+        const R = a.r + b.r; const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 > (R * P.attractRange) * (R * P.attractRange)) continue;
+        const L = Math.sqrt(d2) || 1e-6; const n = [dx / L, dy / L, dz / L];
+        const bonded = a.mol && a.mol === b.mol && this.bondBetween(a, b);
+        if (bonded) continue;
+        const minD = a.mol && a.mol === b.mol ? R * 1.05 : R * 0.98;
+        if (L < minD) { const F = -P.kRep * (minD - L); V.addTo(a.f, n, F); V.addTo(b.f, n, -F); }
+        // atracción "magnética" si pueden enlazarse
+        if (L > R * 0.9 && a.temp < P.bondMaxT && b.temp < P.bondMaxT && this.canAccept(a) && this.canAccept(b) && (a.mol !== b.mol || !a.mol)) {
+          const F = P.attract * (1 - (L - R) / (R * (P.attractRange - 1))); V.addTo(a.f, n, F); V.addTo(b.f, n, -F);
+        }
+      }
+    }
+    // integración
+    const c = this.bounds.c, bh = this.bounds.h;
+    for (const a of A) {
+      if (a.grab) {
+        const g = a.grab; const nv = V.mul(V.sub(g.target, a.pos), 1 / h);
+        const old = a.gvel; a.gvel = V.lerp(a.gvel, nv, 0.25);
+        const acc = V.len(V.sub(a.gvel, old)) / h; a.acc = a.acc * 0.9 + acc * 0.1;
+        a.pos = g.target.slice(); a.vel = a.gvel.slice(); continue;
+      }
+      // agitación térmica
+      if (a.temp > 0.25) { const j = (a.temp - 0.25) * 6; a.f[0] += (Math.random() - 0.5) * j; a.f[1] += (Math.random() - 0.5) * j; a.f[2] += (Math.random() - 0.5) * j; }
+      // límites suaves
+      for (let k = 0; k < 3; k++) { const o = a.pos[k] - c[k]; if (o > bh[k]) a.f[k] -= (o - bh[k]) * 70; else if (o < -bh[k]) a.f[k] -= (o + bh[k]) * 70; }
+      V.addTo(a.vel, a.f, h);
+      const dmp = Math.exp(-P.damp * h); a.vel[0] *= dmp; a.vel[1] *= dmp; a.vel[2] *= dmp;
+      V.addTo(a.pos, a.vel, h);
+    }
+  }
+  idealAngle(c) {
+    const n = c.bonds.length; let lp = 0;
+    if (c.el.mainGroup) { let s = 0; for (const b of c.bonds) s += b.order; lp = Math.max(0, Math.floor((c.el.ve - s) / 2)); }
+    const dom = n + lp;
+    if (dom <= 2) return 180;
+    if (dom === 3) return lp ? 117 : 120;
+    if (dom === 4) return lp === 2 ? 104.5 : lp === 1 ? 107 : 109.47;
+    if (dom === 5) return n <= 3 ? 90 : 100;
+    return 90;
+  }
+  chemistry(dt) {
+    const P = PHYS, A = this.atoms;
+    // calor por agitación (lo que tú haces con la mano/dedo)
+    for (const a of A) {
+      if (a.grab) {
+        const heat = Math.max(0, a.acc - 9) * 0.045 * dt;
+        if (heat > 0) { const atoms = a.mol ? a.mol.atoms : [a]; for (const x of atoms) x.temp += heat * (x === a ? 1 : 0.8); }
+      }
+      // mechero
+      const bp = this.burner.pos;
+      if (this.burner.on) {
+        const dx = a.pos[0] - bp[0], dz = a.pos[2] - bp[2], dy = a.pos[1] - bp[1];
+        if (dy > -0.01 && dy < 0.16 && dx * dx + dz * dz < 0.05 * 0.05) { a.temp += 1.0 * dt * Math.max(0, 1.5 - a.temp); a.flameT += dt; if (a.el.flame && a.flameT > 0.4) { a.flameT = -9; this.emit('flame', { atom: a }); } }
+      }
+      a.temp -= a.temp * P.cool * dt; if (a.temp < 0.001) a.temp = 0; if (a.temp > 1.6) a.temp = 1.6;
+      a.flash = Math.max(0, a.flash - dt * 2.5);
+    }
+    // conducción por enlaces
+    for (const bd of this.bonds) { const d = (bd.b.temp - bd.a.temp) * Math.min(1, 3 * dt); bd.a.temp += d * 0.5; bd.b.temp -= d * 0.5; }
+    // ruptura por calor o estiramiento
+    for (const bd of [...this.bonds]) {
+      const T = (bd.a.temp + bd.b.temp) / 2; const lim = P.breakT + 0.22 * (bd.order - 1);
+      const L = V.dist(bd.a.pos, bd.b.pos);
+      const stretched = L > bd.rest * (bd.a.grab && bd.b.grab ? 2.2 : 3.2);
+      if ((T > lim && Math.random() < (T - lim) * 8 * dt + 0.01) || stretched) {
+        const n = V.norm(V.sub(bd.b.pos, bd.a.pos));
+        if (bd.order > 1 && !stretched) { bd.order--; bd.rest = this.rest(bd.a, bd.b, bd.order); this.emit('break', { a: bd.a, b: bd.b, pos: V.lerp(bd.a.pos, bd.b.pos, 0.5), partial: true }); }
+        else this.unbond(bd);
+        V.addTo(bd.a.vel, n, -0.5); V.addTo(bd.b.vel, n, 0.5);
+        bd.a.temp *= 0.85; bd.b.temp *= 0.85; bd.a.cool = bd.b.cool = this.t + 0.5;
+      }
+    }
+    // mejora de orden de enlace (doble / triple) cuando ambos tienen valencia libre
+    for (const bd of this.bonds) {
+      if (bd.order < 3 && this.t - bd.born > 0.45 && this.free(bd.a) > 0 && this.free(bd.b) > 0 && bd.a.temp < 0.6 && bd.b.temp < 0.6 &&
+        bd.a.el.cat !== 'alkali' && bd.b.el.cat !== 'alkali' && !(bd.a.el.sym === 'H' || bd.b.el.sym === 'H')) {
+        bd.order++; bd.rest = this.rest(bd.a, bd.b, bd.order); bd.born = this.t; bd.a.flash = bd.b.flash = 1;
+        this.dirty = true; this.emit('bond', { a: bd.a, b: bd.b, order: bd.order, pos: V.lerp(bd.a.pos, bd.b.pos, 0.5), upgrade: true });
+      }
+    }
+    // contactos: enlaces nuevos, colisiones, reacciones
+    for (let i = 0; i < A.length; i++) for (let j = i + 1; j < A.length; j++) {
+      const a = A[i], b = A[j]; const R = a.r + b.r; const d = V.dist(a.pos, b.pos);
+      if (d > R * P.contact) continue;
+      if (this.bondBetween(a, b)) continue;
+      // golpe fuerte -> calor
+      const rv = V.len(V.sub(a.vel, b.vel));
+      if (rv > 1.1 && (a.mol !== b.mol)) { const h = (rv - 1.1) * 0.35; a.temp += h; b.temp += h; this.emit('impact', { pos: V.lerp(a.pos, b.pos, 0.5), power: rv }); const n = V.norm(V.sub(b.pos, a.pos)); V.addTo(a.vel, n, -rv * 0.3); V.addTo(b.vel, n, rv * 0.3); }
+      if (a.mol !== b.mol && this.tryReaction(a, b)) continue;
+      if (a.valence === 0 || b.valence === 0) { if (a.valence === 0 || b.valence === 0) this.emit('noble', { atom: a.valence === 0 ? a : b }); continue; }
+      if (a.temp > P.bondMaxT || b.temp > P.bondMaxT || a.cool > this.t || b.cool > this.t) continue;
+      if (!this.canAccept(a) || !this.canAccept(b)) continue;
+      if (a.mol && a.mol === b.mol && this.graphDist(a, b, 2) <= 2) continue;
+      this.bond(a, b, 1);
+      if (this.dirty) this.rebuildMols();
+    }
+  }
+}
+
+// ================= ÁTOMO LAB =================
+const $ = s => document.querySelector(s);
+const canvas = $('#gl'), video = $('#cam'), overlay = $('#handsOverlay'), octx = overlay.getContext('2d');
+let R;
+try { R = new Renderer(canvas); } catch (e) { document.body.innerHTML = '<div class="fatal">Tu navegador no soporta WebGL2 😢<br><small>' + e.message + '</small></div>'; throw e; }
+const gl = R.gl;
+const sim = new Sim();
+const FOV = 50 * Math.PI / 180;
+
+// ---------- persistencia ----------
+const store = { disc: [], ach: [], sound: true, help: false };
+try { Object.assign(store, JSON.parse(localStorage.getItem('atomolab.v1') || '{}')); } catch (e) { }
+const save = () => { try { localStorage.setItem('atomolab.v1', JSON.stringify(store)); } catch (e) { } };
+const discovered = new Set(store.disc), achieved = new Set(store.ach);
+
+// ================= AUDIO =================
+const Audio = {
+  ctx: null, master: null,
+  unlock() {
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.master = this.ctx.createGain(); this.master.gain.value = store.sound ? 0.55 : 0; this.master.connect(this.ctx.destination); } catch (e) { }
+  },
+  setOn(on) { store.sound = on; save(); if (this.master) this.master.gain.value = on ? 0.55 : 0; },
+  tone(f0, f1, dur, type = 'sine', vol = 0.3, delay = 0) {
+    const c = this.ctx; if (!c) return; const t = c.currentTime + delay;
+    const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
+  },
+  noise(dur, f0, f1, vol = 0.4, q = 0.8) {
+    const c = this.ctx; if (!c) return; const t = c.currentTime;
+    const len = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    const src = c.createBufferSource(); src.buffer = buf; const fl = c.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = q;
+    fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = c.createGain(); g.gain.value = vol; src.connect(fl); fl.connect(g); g.connect(this.master); src.start(t);
+  },
+  pop(mass) { const f = 900 / Math.pow(mass, 0.22); this.tone(f * 1.6, f * 0.7, 0.14, 'sine', 0.28); },
+  bond(order) { const b = [523, 659, 784][order - 1] || 523; this.tone(b, b, 0.25, 'triangle', 0.18); this.tone(b * 1.5, b * 1.5, 0.3, 'sine', 0.12, 0.06); },
+  brk() { this.noise(0.18, 4000, 400, 0.25); this.tone(300, 90, 0.2, 'sawtooth', 0.06); },
+  boom(p = 1) { this.noise(0.9 + p * 0.3, 1800, 60, 0.6 * Math.min(1.4, p)); this.tone(90, 35, 0.8, 'sine', 0.5); },
+  discover() { [523, 659, 784, 1046].forEach((f, i) => this.tone(f, f, 0.35, 'triangle', 0.16, i * 0.08)); },
+  whoosh() { this.noise(0.5, 300, 4000, 0.25, 2); },
+  tick() { this.tone(1400, 1100, 0.04, 'square', 0.04); },
+  fizz() { this.noise(0.6, 6000, 2000, 0.15); },
+};
+
+// ================= PARTÍCULAS =================
+class Particles {
+  constructor(max = 6000) {
+    this.max = max; this.n = 0;
+    this.p = new Float32Array(max * 3); this.v = new Float32Array(max * 3); this.c = new Float32Array(max * 4);
+    this.life = new Float32Array(max); this.ml = new Float32Array(max); this.size = new Float32Array(max); this.g = new Float32Array(max); this.drag = new Float32Array(max); this.grow = new Float32Array(max);
+    this.out = new Float32Array(max * 8);
+  }
+  add(p, v, c, size, life, g = 0, drag = 1.5, grow = 0) {
+    if (this.n >= this.max) return; const i = this.n++;
+    this.p.set(p, i * 3); this.v.set(v, i * 3); this.c[i * 4] = c[0]; this.c[i * 4 + 1] = c[1]; this.c[i * 4 + 2] = c[2]; this.c[i * 4 + 3] = c[3] == null ? 1 : c[3];
+    this.life[i] = life; this.ml[i] = life; this.size[i] = size; this.g[i] = g; this.drag[i] = drag; this.grow[i] = grow;
+  }
+  burst(pos, n, color, speed, size, life, opt = {}) {
+    for (let i = 0; i < n; i++) {
+      const d = V.norm([Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1]); const s = speed * (0.3 + Math.random() * 0.7);
+      const col = opt.jitter ? [color[0] * (0.7 + Math.random() * 0.3), color[1] * (0.7 + Math.random() * 0.3), color[2] * (0.7 + Math.random() * 0.3), color[3]] : color;
+      this.add(pos, V.mul(d, s), col, size * (0.6 + Math.random() * 0.8), life * (0.5 + Math.random() * 0.7), opt.g || 0, opt.drag == null ? 2.5 : opt.drag, opt.grow || 0);
+    }
+  }
+  update(dt) {
+    let j = 0;
+    for (let i = 0; i < this.n; i++) {
+      this.life[i] -= dt; if (this.life[i] <= 0) continue;
+      if (j !== i) {
+        this.p.copyWithin(j * 3, i * 3, i * 3 + 3); this.v.copyWithin(j * 3, i * 3, i * 3 + 3); this.c.copyWithin(j * 4, i * 4, i * 4 + 4);
+        this.life[j] = this.life[i]; this.ml[j] = this.ml[i]; this.size[j] = this.size[i]; this.g[j] = this.g[i]; this.drag[j] = this.drag[i]; this.grow[j] = this.grow[i];
+      }
+      const k = Math.exp(-this.drag[j] * dt);
+      this.v[j * 3] *= k; this.v[j * 3 + 1] = this.v[j * 3 + 1] * k + this.g[j] * dt; this.v[j * 3 + 2] *= k;
+      this.p[j * 3] += this.v[j * 3] * dt; this.p[j * 3 + 1] += this.v[j * 3 + 1] * dt; this.p[j * 3 + 2] += this.v[j * 3 + 2] * dt;
+      this.size[j] += this.grow[j] * dt;
+      j++;
+    }
+    this.n = j;
+  }
+  pack() {
+    const o = this.out;
+    for (let i = 0; i < this.n; i++) {
+      const t = this.life[i] / this.ml[i]; const a = this.c[i * 4 + 3] * Math.min(1, t * 2.2);
+      o[i * 8] = this.p[i * 3]; o[i * 8 + 1] = this.p[i * 3 + 1]; o[i * 8 + 2] = this.p[i * 3 + 2]; o[i * 8 + 3] = this.size[i];
+      o[i * 8 + 4] = this.c[i * 4]; o[i * 8 + 5] = this.c[i * 4 + 1]; o[i * 8 + 6] = this.c[i * 4 + 2]; o[i * 8 + 7] = a;
+    }
+    return this.n;
+  }
+}
+const FX = new Particles();
+
+// ================= TEXTO → TEXTURA =================
+const texCache = new Map();
+function textTex(key, style, text, text2) {
+  const k = style + '|' + key;
+  if (texCache.has(k)) return texCache.get(k);
+  const cv = document.createElement('canvas'); const c = cv.getContext('2d');
+  let w, h;
+  const F = '"Space Grotesk", "Inter", system-ui, sans-serif';
+  if (style === 'sym') {
+    w = h = 128; cv.width = w; cv.height = h;
+    c.font = `700 ${text.length > 2 ? 54 : text.length > 1 ? 64 : 76}px ${F}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.lineJoin = 'round'; c.lineWidth = 12; c.strokeStyle = 'rgba(0,0,0,0.55)'; c.strokeText(text, 64, 68); c.fillStyle = '#fff'; c.fillText(text, 64, 68);
+  } else {
+    const fs = style === 'mol' ? 46 : 40, padX = 26;
+    c.font = `600 ${fs}px ${F}`;
+    const t1w = c.measureText(text).width; let t2w = 0;
+    if (text2) { c.font = `500 ${fs}px ${F}`; t2w = c.measureText('  ·  ' + text2).width; }
+    w = Math.ceil(t1w + t2w + padX * 2); h = Math.ceil(fs * 1.75); cv.width = w; cv.height = h;
+    c.font = `600 ${fs}px ${F}`;
+    const r = h / 2;
+    c.beginPath(); c.moveTo(r, 2); c.arcTo(w - 2, 2, w - 2, h - 2, r - 2); c.arcTo(w - 2, h - 2, 2, h - 2, r - 2); c.arcTo(2, h - 2, 2, 2, r - 2); c.arcTo(2, 2, w - 2, 2, r - 2); c.closePath();
+    c.fillStyle = style === 'dim' ? 'rgba(10,12,22,0.55)' : 'rgba(8,10,22,0.78)'; c.fill();
+    c.lineWidth = 3; c.strokeStyle = style === 'mol' ? 'rgba(61,255,158,0.75)' : 'rgba(255,255,255,0.22)'; c.stroke();
+    c.textBaseline = 'middle'; c.fillStyle = style === 'dim' ? 'rgba(255,255,255,0.75)' : '#fff'; c.fillText(text, padX, h / 2 + 2);
+    if (text2) { c.font = `500 ${fs}px ${F}`; c.fillStyle = style === 'mol' ? '#3dff9e' : '#9fd8ff'; c.fillText('  ·  ' + text2, padX + t1w, h / 2 + 2); }
+  }
+  const tex = R.texFromCanvas(cv); const out = { tex, aspect: w / h };
+  texCache.set(k, out); return out;
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { for (const v of texCache.values()) R.gl.deleteTexture(v.tex); texCache.clear(); panelDirty = true; });
+
+// ================= ESTADO DE VISTA =================
+const view2d = { yaw: 0, pitch: 0.1, dist: 1.0, target: [0, -0.02, 0], shake: 0 };
+let mode = 'touch'; // 'touch' | 'hands' | 'xr'
+let labFloorY = -0.38;
+function layout2D() {
+  const w = canvas.clientWidth, h = canvas.clientHeight, asp = w / h;
+  const halfW = asp < 1 ? 0.22 : 0.34;
+  view2d.dist = Math.min(1.7, Math.max(0.78, halfW / (Math.tan(FOV / 2) * asp)));
+  if (asp >= 1) view2d.dist = Math.max(0.85, Math.min(view2d.dist, 1.05));
+  const visHalfH = Math.tan(FOV / 2) * view2d.dist, visHalfW = visHalfH * asp;
+  view2d.target = [0, asp < 1 ? -visHalfH * 0.04 : -0.03, 0];
+  const bx = Math.min(0.3, visHalfW * 0.68), by = asp < 1 ? -visHalfH * 0.48 : -visHalfH * 0.42;
+  sim.burner.pos = [bx, by + 0.03, 0.02]; sim.recycler.pos = [-bx, by + 0.07, 0.02];
+  sim.bounds.c = [0, view2d.target[1] + 0.02, 0]; sim.bounds.h = [visHalfW * 0.92, visHalfH * 0.7, 0.18];
+  labFloorY = by - 0.12;
+}
+function layoutXR() {
+  sim.burner.pos = [0.3, -0.1, 0.04]; sim.recycler.pos = [-0.3, -0.05, 0.04];
+  sim.bounds.c = [0, 0, 0]; sim.bounds.h = [0.6, 0.45, 0.4];
+}
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(canvas.clientWidth * dpr); canvas.height = Math.round(canvas.clientHeight * dpr);
+  overlay.width = Math.round(overlay.clientWidth * dpr); overlay.height = Math.round(overlay.clientHeight * dpr);
+  if (mode !== 'xr') layout2D();
+}
+window.addEventListener('resize', resize);
+
+function camera2D() {
+  const v = view2d, cp = Math.cos(v.pitch);
+  let eye = [v.target[0] + Math.sin(v.yaw) * cp * v.dist, v.target[1] + Math.sin(v.pitch) * v.dist, v.target[2] + Math.cos(v.yaw) * cp * v.dist];
+  let tgt = v.target;
+  if (v.shake > 0.0005) { const s = v.shake; const j = [(Math.random() - 0.5) * s, (Math.random() - 0.5) * s, (Math.random() - 0.5) * s]; eye = V.add(eye, j); tgt = V.add(tgt, j); }
+  const viewM = M4.lookAt(eye, tgt, [0, 1, 0]);
+  const proj = M4.perspective(FOV, canvas.width / canvas.height, 0.02, 100);
+  return { view: viewM, proj, pos: eye, right: [viewM[0], viewM[4], viewM[8]], up: [viewM[1], viewM[5], viewM[9]], back: [viewM[2], viewM[6], viewM[10]], vpH: canvas.height, env: mode === 'touch', xr: false };
+}
+let cam = null;
+function screenRay(x, y) {
+  const r = canvas.getBoundingClientRect(); const nx = ((x - r.left) / r.width) * 2 - 1, ny = -(((y - r.top) / r.height) * 2 - 1);
+  const t = Math.tan(FOV / 2), asp = r.width / r.height;
+  const dir = V.norm(V.add(V.add(V.mul(cam.right, nx * t * asp), V.mul(cam.up, ny * t)), V.mul(cam.back, -1)));
+  return { o: cam.pos.slice(), d: dir };
+}
+function raySphere(ray, c, r) {
+  const oc = V.sub(ray.o, c); const b = V.dot(oc, ray.d); const cc = V.dot(oc, oc) - r * r; const h = b * b - cc;
+  if (h < 0) return Infinity; const t = -b - Math.sqrt(h); return t > 0 ? t : Infinity;
+}
+function pickAtom(ray, inflate = 1.35) {
+  let best = null, bt = Infinity;
+  for (const a of sim.atoms) { if (a.grab) continue; const t = raySphere(ray, a.pos, a.r * inflate); if (t < bt) { bt = t; best = a; } }
+  return best ? { atom: best, t: bt } : null;
+}
+function rayDepthPoint(ray, depth) { // punto del rayo a "depth" metros sobre el eje forward de la cámara
+  const fwd = V.mul(cam.back, -1); const k = depth / Math.max(0.05, V.dot(ray.d, fwd)); return V.add(ray.o, V.mul(ray.d, k));
+}
+
+// ================= AGARRES (puntero, mano, mando) =================
+const grabs = new Map(); // key -> {atom, depth, offset, hist, s0}
+function startGrab2D(key, atom, ray, extra = {}) {
+  const fwd = V.mul(cam.back, -1);
+  const depth = V.dot(V.sub(atom.pos, cam.pos), fwd);
+  const p = rayDepthPoint(ray, depth);
+  const g = { atom, depth, offset: V.sub(atom.pos, p), hist: [{ t: performance.now(), p: atom.pos.slice() }], ...extra };
+  grabs.set(key, g); sim.grab(atom, key); Audio.tick(); haptic(8);
+  const n = [...grabs.values()].filter(x => x.atom && sim.atoms.includes(x.atom)).length;
+  if (n >= 2) unlock('twohands');
+  return g;
+}
+function moveGrab2D(key, ray) {
+  const g = grabs.get(key); if (!g) return;
+  if (!sim.atoms.includes(g.atom)) { grabs.delete(key); return; }
+  g.offset = V.mul(g.offset, 0.9);
+  const p = V.add(rayDepthPoint(ray, g.depth), g.offset);
+  sim.setTarget(g.atom, p); pushHist(g, p);
+}
+function pushHist(g, p) { const now = performance.now(); g.hist.push({ t: now, p: p.slice() }); while (g.hist.length > 2 && now - g.hist[0].t > 110) g.hist.shift(); }
+function histVel(g) {
+  const h = g.hist; if (h.length < 2) return [0, 0, 0]; const a = h[0], b = h[h.length - 1]; const dt = (b.t - a.t) / 1000;
+  if (dt < 0.008 || performance.now() - b.t > 120) return [0, 0, 0]; return V.mul(V.sub(b.p, a.p), 1 / dt);
+}
+function endGrab(key) {
+  const g = grabs.get(key); if (!g) return; grabs.delete(key);
+  if (g.atom && sim.atoms.includes(g.atom)) sim.release(g.atom, histVel(g));
+}
+
+// ---------- puntero 2D ----------
+const orbitPtrs = new Map(); let pinchD0 = 0, dist0 = 1;
+canvas.addEventListener('pointerdown', e => {
+  Audio.unlock(); closeHintOnAction();
+  if (mode === 'xr') return;
+  canvas.setPointerCapture(e.pointerId);
+  const ray = screenRay(e.clientX, e.clientY); const hit = pickAtom(ray);
+  if (hit) { startGrab2D('p' + e.pointerId, hit.atom, ray); return; }
+  if (mode === 'hands') return;
+  orbitPtrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (orbitPtrs.size === 2) { const [a, b] = [...orbitPtrs.values()]; pinchD0 = Math.hypot(a.x - b.x, a.y - b.y); dist0 = view2d.dist; }
+});
+canvas.addEventListener('pointermove', e => {
+  const key = 'p' + e.pointerId;
+  if (grabs.has(key)) { moveGrab2D(key, screenRay(e.clientX, e.clientY)); return; }
+  const o = orbitPtrs.get(e.pointerId); if (!o) return;
+  if (orbitPtrs.size === 1) {
+    view2d.yaw -= (e.clientX - o.x) * 0.006; view2d.pitch = Math.max(-0.6, Math.min(1.2, view2d.pitch + (e.clientY - o.y) * 0.005));
+  }
+  o.x = e.clientX; o.y = e.clientY;
+  if (orbitPtrs.size === 2) { const [a, b] = [...orbitPtrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinchD0 > 0) view2d.dist = Math.max(0.35, Math.min(2.5, dist0 * pinchD0 / d)); }
+});
+const endPtr = e => { endGrab('p' + e.pointerId); orbitPtrs.delete(e.pointerId); };
+canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const active = [...grabs.values()].filter(g => g.depth != null);
+  if (active.length) { for (const g of active) g.depth = Math.max(0.3, Math.min(2.5, g.depth + e.deltaY * 0.0006)); }
+  else view2d.dist = Math.max(0.35, Math.min(2.5, view2d.dist * Math.exp(e.deltaY * 0.001)));
+}, { passive: false });
+canvas.addEventListener('dblclick', () => { view2d.yaw = 0; view2d.pitch = 0.1; layout2D(); });
+
+function haptic(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { } }
+
+// ================= APARICIÓN DE ÁTOMOS =================
+function spawnAt(el, pos, vel) { const a = sim.spawn(el, pos, vel || [0, 0, 0]); return a; }
+function spawnNear(el) {
+  const c = sim.bounds.c; const a = Math.random() * Math.PI * 2, r = 0.03 + Math.random() * 0.07;
+  const p = [c[0] + Math.cos(a) * r, c[1] + 0.02 + Math.sin(a) * r * 0.7, (Math.random() - 0.5) * 0.06];
+  if (mode === 'xr') { p[1] = 0; p[2] = 0.05; }
+  return spawnAt(el, p, [(Math.random() - 0.5) * 0.1, 0.05, 0]);
+}
+function spawnFormula(hill) {
+  const list = []; for (const [sym, n] of parseHill(hill)) for (let i = 0; i < n; i++) list.push(EL_BY_SYM[sym]);
+  list.sort((a, b) => b.valence - a.valence);
+  const c = sim.bounds.c; const N = list.length;
+  list.forEach((el, i) => {
+    const ang = i / N * Math.PI * 2, rr = 0.06 + 0.012 * N;
+    setTimeout(() => spawnAt(el, [c[0] + Math.cos(ang) * rr, c[1] + 0.03 + Math.sin(ang) * rr * 0.75, (Math.random() - 0.5) * 0.03], [-Math.cos(ang) * 0.12, -Math.sin(ang) * 0.1, 0]), i * 70);
+  });
+}
+
+// ================= LOGROS / DESCUBRIMIENTOS =================
+function unlock(id) {
+  if (achieved.has(id)) return; achieved.add(id); store.ach = [...achieved]; save();
+  const a = ACHIEVEMENTS.find(x => x.id === id); if (!a) return;
+  toast(`<div class="t-ach"><span class="t-ico">${a.icon}</span><div><small>LOGRO DESBLOQUEADO</small><b>${a.name}</b></div></div>`, 'ach', 3200);
+  panelMsg = 'Logro: ' + a.name; panelDirty = true; updateCounters();
+}
+function updateCounters() {
+  $('#discCount').textContent = discovered.size; $('#discTotal').textContent = MOL_LIST.length;
+  const ring = $('#discRing'); if (ring) ring.style.setProperty('--p', (discovered.size / MOL_LIST.length * 100) + '%');
+}
+
+// ================= EVENTOS DE LA SIMULACIÓN =================
+let lastNoble = 0, lastImpact = 0, panelMsg = 'Pellizca un elemento y sácalo de la tabla';
+const FLAME_NAME = { Li: 'rojo carmesí', Na: 'amarillo intenso', K: 'lila', Rb: 'rojo violeta', Cs: 'azul violeta', Ca: 'rojo anaranjado', Sr: 'rojo escarlata', Ba: 'verde manzana', Cu: 'verde azulado', B: 'verde brillante', In: 'azul índigo', Tl: 'verde', Se: 'azul', Zn: 'verde pálido', Mg: 'blanco cegador' };
+function processEvents() {
+  for (const e of sim.events) {
+    switch (e.type) {
+      case 'spawn': Audio.pop(e.atom.el.mass); FX.burst(e.atom.pos, 14, [...e.atom.el.color, 0.9], 0.25, 0.012, 0.45); break;
+      case 'bond':
+        Audio.bond(e.order); haptic(e.order * 12);
+        FX.burst(e.pos, 18 + e.order * 8, [0.55, 0.9, 1, 1], 0.35, 0.01, 0.5);
+        unlock('bond'); if (e.order === 2) unlock('double'); if (e.order === 3) unlock('triple');
+        xrPulse(0.5, 30); break;
+      case 'break':
+        Audio.brk(); FX.burst(e.pos, 26, [1, 0.6, 0.2, 1], 0.6, 0.012, 0.6, { jitter: true }); unlock('break'); xrPulse(0.8, 50); break;
+      case 'impact':
+        if (sim.t - lastImpact > 0.1) { lastImpact = sim.t; Audio.tone(200, 80, 0.1, 'square', 0.08); FX.burst(e.pos, 10, [1, 0.9, 0.6, 1], 0.5, 0.008, 0.3); } break;
+      case 'reaction': onReaction(e); break;
+      case 'molecule': onMolecule(e.mol); break;
+      case 'flame': {
+        const el = e.atom.el; unlock('flame');
+        toast(`<div class="t-row"><span class="t-swatch" style="background:${el.flameHex}"></span><div><b>Ensayo a la llama</b><br>El ${el.name.toLowerCase()} tiñe la llama de <b style="color:${el.flameHex}">${FLAME_NAME[el.sym] || 'color'}</b>.</div></div>`, 'info', 3500);
+        Audio.fizz(); break;
+      }
+      case 'recycle':
+        Audio.whoosh(); unlock('recycle');
+        for (const a of e.atoms) for (let i = 0; i < 12; i++) { const d = V.sub(e.pos, a.pos); FX.add(a.pos, V.add(V.mul(d, 3), [(Math.random() - .5) * .3, (Math.random() - .5) * .3, (Math.random() - .5) * .3]), [...a.color, 1], 0.012, 0.45, 0, 1); }
+        FX.burst(e.pos, 40, [0.2, 1, 0.6, 1], 0.4, 0.01, 0.6); break;
+      case 'noble':
+        if (performance.now() - lastNoble > 6000) { lastNoble = performance.now(); toast(`😴 El <b>${e.atom.el.name}</b> es un gas noble: su capa está llena y no forma enlaces.`, 'info', 3000); } break;
+    }
+  }
+  sim.events.length = 0;
+}
+function onReaction(e) {
+  const p = e.power || 1; view2d.shake = 0.012 * p; xrPulse(1, 120);
+  if (e.kind === 'combust') {
+    Audio.boom(p); unlock('combust');
+    FX.burst(e.pos, 50, [1, 1, 0.85, 1], 0.9 * p, 0.04, 0.25, { drag: 4 });
+    FX.burst(e.pos, 160, [1, 0.55, 0.12, 1], 0.9 * p, 0.03, 0.9, { jitter: true, g: 0.25, drag: 3.2, grow: 0.02 });
+    FX.burst(e.pos, 60, [0.35, 0.33, 0.38, 0.5], 0.35, 0.05, 1.6, { g: 0.12, drag: 2, grow: 0.05 });
+    toast('🔥 <b>¡Combustión!</b> El combustible reaccionó con O₂ → <b>H₂O</b> (y <b>CO₂</b> si había carbono). Libera muchísima energía.', 'boom', 4200);
+  } else if (e.kind === 'alkali') {
+    Audio.boom(p * 0.8); unlock('alkali');
+    FX.burst(e.pos, 30, [1, 1, 1, 1], 0.7, 0.035, 0.2, { drag: 5 });
+    FX.burst(e.pos, 120 * Math.min(2, p), [...e.color, 1], 0.9 * p, 0.022, 0.8, { jitter: true, g: 0.3, drag: 3 });
+    FX.burst(e.pos, 40, [0.8, 0.9, 1, 0.6], 0.5, 0.03, 1.2, { g: 0.2, drag: 2, grow: 0.03 });
+    toast(`💥 <b>${e.metal.sym} + H₂O → ${e.metal.sym}OH + H</b><br>Los metales alcalinos reaccionan con violencia con el agua${e.metal.sym === 'Cs' || e.metal.sym === 'Rb' ? '… ¡y este es de los peores!' : '.'}`, 'boom', 4200);
+  } else if (e.kind === 'salt') {
+    Audio.tone(1200, 300, 0.4, 'sawtooth', 0.12); Audio.fizz(); unlock('salt');
+    FX.burst(e.pos, 70, [1, 1, 0.8, 1], 0.6, 0.018, 0.6, { jitter: true });
+    toast('🧂 <b>Metal + halógeno</b>: el metal le cede su electrón al halógeno y forman una sal.', 'info', 3500);
+  }
+}
+function onMolecule(m) {
+  const info = m.info; if (!info) return;
+  if (!discovered.has(m.hill)) {
+    discovered.add(m.hill); store.disc = [...discovered]; save(); updateCounters(); Audio.discover(); haptic(30);
+    const c = m.center;
+    for (let i = 0; i < 70; i++) FX.add(c, [(Math.random() - .5) * 0.9, Math.random() * 0.8 + 0.2, (Math.random() - .5) * 0.9], [...[[0.24, 1, 0.62], [0.4, 0.8, 1], [1, 0.85, 0.3], [1, 0.4, 0.7]][i % 4], 1], 0.012, 1.2, -0.9, 1.2);
+    toast(`<div class="t-disc"><small>¡NUEVO DESCUBRIMIENTO! · ${discovered.size}/${MOL_LIST.length}</small><b>${info.name} <span>${info.pretty}</span></b><p>${info.fact}</p></div>`, 'disc', 5200);
+    panelMsg = '¡Descubriste ' + info.name + ' (' + info.pretty + ')!'; panelDirty = true;
+    if (discovered.size >= 5) unlock('five'); if (discovered.size >= 20) unlock('twenty');
+  } else Audio.tone(880, 880, 0.15, 'triangle', 0.08);
+}
+
+// ================= TOASTS / MODALES =================
+function toast(html, kind = 'info', ms = 2600) {
+  const box = $('#toasts'); const t = document.createElement('div'); t.className = 'toast ' + kind; t.innerHTML = html;
+  box.appendChild(t); while (box.children.length > (innerWidth < 600 ? 2 : 3)) box.firstChild.remove();
+  requestAnimationFrame(() => t.classList.add('in'));
+  setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 400); }, ms);
+}
+function openModal(html) { const m = $('#modal'); $('#modalBody').innerHTML = html; m.classList.add('open'); }
+function closeModal() { $('#modal').classList.remove('open'); }
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.target.closest('[data-close]')) closeModal(); });
+
+function discHTML(tab = 'mol') {
+  const molCards = MOL_LIST.map(m => {
+    const d = discovered.has(m.hill);
+    return `<div class="card ${d ? 'done' : ''}">
+      <div class="f">${m.pretty}</div><div class="n">${d ? m.name : '???'}</div>
+      <div class="x">${d ? m.fact : 'Pista: ' + '★'.repeat(m.diff) + '☆'.repeat(3 - m.diff) + ' dificultad'}</div>
+      <button class="mini" data-spawn="${m.hill}">${d ? 'Recrear' : 'Dame los átomos'}</button></div>`;
+  }).join('');
+  const achCards = ACHIEVEMENTS.map(a => `<div class="card ach ${achieved.has(a.id) ? 'done' : ''}"><div class="ico">${a.icon}</div><div class="n">${a.name}</div><div class="x">${a.desc}</div></div>`).join('');
+  return `<div class="mhead"><div><h2>Descubrimientos</h2><p>${discovered.size} de ${MOL_LIST.length} moléculas · ${achieved.size} de ${ACHIEVEMENTS.length} logros</p></div><button class="x-btn" data-close>✕</button></div>
+  <div class="bar"><i style="width:${discovered.size / MOL_LIST.length * 100}%"></i></div>
+  <div class="tabs"><button class="${tab === 'mol' ? 'on' : ''}" data-tab="mol">Moléculas</button><button class="${tab === 'ach' ? 'on' : ''}" data-tab="ach">Logros</button></div>
+  <div class="grid">${tab === 'mol' ? molCards : achCards}</div>`;
+}
+$('#btnDisc').addEventListener('click', () => { Audio.unlock(); openModal(discHTML('mol')); });
+$('#modalBody').addEventListener('click', e => {
+  const t = e.target.closest('[data-tab]'); if (t) { $('#modalBody').innerHTML = discHTML(t.dataset.tab); return; }
+  const s = e.target.closest('[data-spawn]'); if (s) { closeModal(); spawnFormula(s.dataset.spawn); return; }
+  const h = e.target.closest('[data-act]'); if (h) { const a = h.dataset.act; closeModal(); if (a === 'demo') demo(); if (a === 'hands') startHands(); if (a === 'vr') enterXR(xrModes[0]); }
+});
+function helpHTML() {
+  return `<div class="mhead"><div><h2>Cómo se juega</h2><p>Química con tus manos, en 3D</p></div><button class="x-btn" data-close>✕</button></div>
+  <ol class="steps">
+   <li><b>Saca átomos</b> de la tabla: tócalos, o arrástralos hacia arriba.</li>
+   <li><b>Júntalos</b>: si tienen enlaces libres se atraen y se enlazan solos (simples, dobles o triples).</li>
+   <li><b>Muévelos rápido</b>: agitar una molécula la calienta 🌡. Si se calienta mucho, sus enlaces se rompen.</li>
+   <li><b>Estira</b> una molécula con dos dedos (o dos manos) para partirla.</li>
+   <li><b>Lánzalos</b>: suelta un átomo en movimiento y sale volando. Choques fuertes = calor.</li>
+   <li>Llévalos al <b>mechero 🔥</b> para el ensayo a la llama, o al <b>anillo ♻</b> para reciclarlos.</li>
+  </ol>
+  <h3>Reacciones para probar</h3>
+  <ul class="tips"><li>H₂ caliente + O₂ → 💥 agua</li><li>Na o K lanzado contra H₂O → 💥</li><li>Na + Cl₂ → sal</li><li>CH₄ caliente + O₂ → CO₂ + H₂O</li></ul>
+  <h3>Modos</h3>
+  <ul class="tips"><li><b>✋ Manos</b>: usa la cámara y tus dedos (pellizca para agarrar), como realidad aumentada.</li><li><b>VR / AR</b>: en Meta Quest o Apple Vision Pro, la tabla flota frente a ti y agarras los átomos pellizcando.</li><li>Ordenador: arrastra en el vacío para girar, rueda para acercar (o para alejar el átomo que sujetas).</li></ul>
+  <div class="actions-row"><button class="primary" data-act="demo">Ver una demo</button><button data-close>Empezar</button></div>`;
+}
+$('#btnHelp').addEventListener('click', () => openModal(helpHTML()));
+$('#btnClear').addEventListener('click', () => { if (!sim.atoms.length) return; const c = sim.center(sim.atoms); FX.burst(c, 60, [0.3, 1, 0.7, 1], 0.6, 0.012, 0.6); Audio.whoosh(); for (const k of [...grabs.keys()]) grabs.delete(k); sim.clear(); });
+$('#btnSound').addEventListener('click', () => { Audio.unlock(); Audio.setOn(!store.sound); syncSoundBtn(); });
+function syncSoundBtn() { $('#btnSound').classList.toggle('off', !store.sound); }
+$('#btnBurner').addEventListener('click', () => { sim.burner.on = !sim.burner.on; $('#btnBurner').classList.toggle('off', !sim.burner.on); panelDirty = true; });
+
+function demo() {
+  sim.clear();
+  const c = sim.bounds.c;
+  const k = Math.min(1, sim.bounds.h[0] / 0.3);
+  [['O', [-0.06, 0.07, 0]], ['H', [-0.13, 0.11, 0]], ['H', [0.01, 0.13, 0]], ['C', [0.05, -0.06, 0]], ['O', [0.13, -0.03, 0]], ['O', [-0.04, -0.1, 0]]]
+    .forEach(([s, p], i) => setTimeout(() => spawnAt(EL_BY_SYM[s], V.add(c, [p[0] * k, p[1], p[2]]), [0, 0, 0]), 200 + i * 220));
+  toast('Mira cómo se arman <b>agua</b> y <b>CO₂</b> solas. Ahora prueba tú 👇', 'info', 3500);
+}
+function closeHintOnAction() { const h = $('#hint'); if (h && !h.classList.contains('gone')) { h.classList.add('gone'); store.help = true; save(); } }
+
+// ================= DOCK: TABLA PERIÓDICA =================
+const QUICK = ['H', 'C', 'N', 'O', 'F', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'K', 'Ca', 'Fe', 'Cu', 'Br', 'I', 'Li', 'He'];
+function tileHTML(el, cls = '') {
+  return `<button class="tile ${cls} c-${el.cat}" data-z="${el.Z}" style="--c:${CATS[el.cat].tile}"><i>${el.Z}</i><b>${el.sym}</b><s>${el.name}</s></button>`;
+}
+function buildDock() {
+  $('#quick').innerHTML = QUICK.map(s => tileHTML(EL_BY_SYM[s], 'q')).join('');
+  let html = '';
+  for (const el of ELEMENTS) {
+    let row, col;
+    if (el.f) { row = el.f === 'lan' ? 9 : 10; col = 3 + el.fi; } else { row = el.period; col = el.group; }
+    html += tileHTML(el).replace('<button', `<button style="grid-row:${row};grid-column:${col};--c:${CATS[el.cat].tile}"`).replace(/style="--c:[^"]*"(?=>)/, '');
+  }
+  html += `<div class="gap" style="grid-row:8;grid-column:1/19"></div>`;
+  html += `<div class="ph" style="grid-row:6;grid-column:3">57–71</div><div class="ph" style="grid-row:7;grid-column:3">89–103</div>`;
+  html += `<div class="legend" style="grid-row:1/4;grid-column:3/13">${Object.entries(CATS).map(([k, v]) => `<span><i style="background:${v.tile}"></i>${v.name}</span>`).join('')}</div>`;
+  $('#ptable').innerHTML = html;
+}
+buildDock();
+$('#btnTable').addEventListener('click', () => { document.body.classList.toggle('table-open'); setTimeout(resize, 320); });
+
+let pendTile = null;
+document.addEventListener('pointerdown', e => {
+  const t = e.target.closest('.tile'); if (!t) return;
+  Audio.unlock(); closeHintOnAction();
+  pendTile = { Z: +t.dataset.z, id: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, el: t };
+  t.classList.add('press');
+});
+window.addEventListener('pointermove', e => {
+  if (!pendTile || pendTile.id !== e.pointerId) return;
+  const dy = pendTile.y0 - e.clientY, dx = Math.abs(e.clientX - pendTile.x0);
+  if (dx > 10) pendTile.moved = true;
+  if (dy > 22 && dy > dx) {
+    // arrastrar hacia la escena: crear y agarrar
+    const el = ELEMENTS[pendTile.Z - 1]; pendTile.el.classList.remove('press');
+    const ray = screenRay(e.clientX, e.clientY); const depth = V.dot(V.sub(sim.bounds.c, cam.pos), V.mul(cam.back, -1));
+    const a = spawnAt(el, rayDepthPoint(ray, depth));
+    const key = 'p' + e.pointerId; startGrab2D(key, a, ray);
+    showElInfo(el); pendTile = null;
+    // seguir el puntero aunque esté capturado por el botón
+    const mv = ev => { if (ev.pointerId === e.pointerId) moveGrab2D(key, screenRay(ev.clientX, ev.clientY)); };
+    const up = ev => { if (ev.pointerId !== e.pointerId) return; endGrab(key); window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  }
+});
+window.addEventListener('pointerup', e => {
+  if (!pendTile || pendTile.id !== e.pointerId) return;
+  pendTile.el.classList.remove('press');
+  if (!pendTile.moved && Math.hypot(e.clientX - pendTile.x0, e.clientY - pendTile.y0) < 12) { const el = ELEMENTS[pendTile.Z - 1]; spawnNear(el); showElInfo(el); }
+  pendTile = null;
+});
+window.addEventListener('pointercancel', e => { if (pendTile && pendTile.id === e.pointerId) { pendTile.el.classList.remove('press'); pendTile = null; } });
+let infoTimer = 0;
+function showElInfo(el) {
+  const box = $('#elinfo');
+  box.innerHTML = `<span class="big" style="--c:${CATS[el.cat].tile}">${el.sym}</span><div><b>${el.name}</b><small>Z ${el.Z} · ${el.mass.toLocaleString('es-CL')} u · ${CATS[el.cat].name} · ${el.valence ? 'valencia ' + el.valence : 'no se enlaza'}</small></div>`;
+  box.classList.add('show'); clearTimeout(infoTimer); infoTimer = setTimeout(() => box.classList.remove('show'), 2600);
+}
+
+// ================= DIBUJO DE LA ESCENA =================
+const BOND_COL = [0.62, 0.85, 1.0];
+function blackbody(t) { // 0..1.6 -> emisión
+  if (t < 0.2) return [0, 0, 0]; const x = Math.min(1, (t - 0.2) / 1.1);
+  return [Math.min(1.4, x * 2.2), Math.max(0, x * 1.4 - 0.35), Math.max(0, x * 1.3 - 0.9)];
+}
+function billboard(c, w, h, cm) { return M4.basis(V.mul(cm.right, w), V.mul(cm.up, h), cm.back, c); }
+function cylModel(a, b, rad) {
+  const ax = V.sub(b, a); const L = V.len(ax) || 1e-6; const y = V.mul(ax, 1 / L); const x = perpTo(y); const z = V.cross(x, y);
+  return M4.basis(V.mul(x, rad), V.mul(y, L), V.mul(z, rad), a);
+}
+const jitterCache = new Map();
+function atomDrawPos(a) {
+  if (a.temp < 0.3 || a.grab) return a.pos; const j = (a.temp - 0.3) * 0.006;
+  return [a.pos[0] + (Math.random() - 0.5) * j, a.pos[1] + (Math.random() - 0.5) * j, a.pos[2] + (Math.random() - 0.5) * j];
+}
+function atomScale(a) { const t = (sim.t - a.born) / 0.35; if (t >= 1) return 1; const s = 1 - Math.pow(1 - t, 3); return s + Math.sin(t * Math.PI) * 0.25; }
+
+function drawWorld(cm, extra = {}) {
+  R.setCamera(cm.view, cm.proj, cm.pos, cm.vpH);
+  if (cm.env) { R.sky(); R.floor(labFloorY, [0, 0, 0]); }
+  // --- opacos ---
+  R.beginLit();
+  const dpos = new Map();
+  for (const a of sim.atoms) dpos.set(a, atomDrawPos(a));
+  for (const a of sim.atoms) {
+    const s = a.r * atomScale(a); const p = dpos.get(a);
+    const em = blackbody(a.temp); const fl = a.flash * 0.35; em[0] += fl; em[1] += fl; em[2] += fl;
+    R.lit(R.mesh.sphere, M4.ts(p, s), a.el.color, em, 0.9, 0.4);
+  }
+  for (const bd of sim.bonds) {
+    const pa = dpos.get(bd.a), pb = dpos.get(bd.b); if (!pa || !pb) continue;
+    const ax = V.norm(V.sub(pb, pa)); let side = V.cross(ax, V.norm(V.sub(cm.pos, V.lerp(pa, pb, 0.5)))); side = V.len(side) < 1e-4 ? perpTo(ax) : V.norm(side);
+    const n = bd.order, rad = n === 1 ? 0.0062 : 0.0044, sp = n === 2 ? 0.0085 : 0.0105;
+    const glow = Math.max(0, 1 - (sim.t - bd.born) * 2.5) * 0.6; const T = blackbody((bd.a.temp + bd.b.temp) / 2);
+    for (let i = 0; i < n; i++) {
+      const o = (i - (n - 1) / 2) * sp;
+      R.lit(R.mesh.cyl, cylModel(V.add(pa, V.mul(side, o)), V.add(pb, V.mul(side, o)), rad), BOND_COL, [0.05 + glow + T[0] * 0.5, 0.12 + glow + T[1] * 0.5, 0.2 + glow + T[2] * 0.5], 0.9, 0.5);
+    }
+  }
+  // mechero
+  const bp = sim.burner.pos;
+  R.lit(R.mesh.cyl, cylModel([bp[0], bp[1] - 0.085, bp[2]], [bp[0], bp[1] - 0.075, bp[2]], 0.04), [0.16, 0.17, 0.21], [0, 0, 0], 0.6, 0.2);
+  R.lit(R.mesh.cone, M4.basis([0.022, 0, 0], [0, 0.012, 0], [0, 0, 0.022], [bp[0], bp[1] - 0.077, bp[2]]), [0.22, 0.24, 0.3], [0, 0, 0], 0.6, 0.2);
+  R.lit(R.mesh.cyl, cylModel([bp[0], bp[1] - 0.075, bp[2]], [bp[0], bp[1] - 0.004, bp[2]], 0.009), [0.75, 0.77, 0.82], [0, 0, 0], 1.2, 0.4);
+  R.lit(R.mesh.cyl, cylModel([bp[0], bp[1] - 0.05, bp[2]], [bp[0], bp[1] - 0.04, bp[2]], 0.0115), [0.85, 0.65, 0.25], [0.05, 0.03, 0], 1.2, 0.4);
+  // reciclador (giroscopio)
+  const rp = sim.recycler.pos, near = [...grabs.values()].some(g => g.atom && V.dist(g.atom.pos, rp) < sim.recycler.r * 1.8);
+  const rs = sim.recycler.r * (near ? 1.18 : 1), t = R.time;
+  const rc = near ? [0.3, 1, 0.65] : [0.18, 0.85, 0.55], re = near ? [0.2, 0.7, 0.4] : [0.05, 0.35, 0.2];
+  R.lit(R.mesh.torus, M4.mul(M4.trans(rp), M4.mul(M4.rotY(t * 0.8), M4.ts([0, 0, 0], rs))), rc, re, 1, 0.6);
+  R.lit(R.mesh.torus, M4.mul(M4.trans(rp), M4.mul(M4.rotX(Math.PI / 2 + Math.sin(t) * 0.4), M4.mul(M4.rotY(-t * 1.3), M4.ts([0, 0, 0], rs * 0.72)))), rc, re, 1, 0.6);
+  R.lit(R.mesh.sphere, M4.ts(rp, rs * 0.32), [0.05, 0.35, 0.4], [0.02, 0.15, 0.18], 1.2, 0.8);
+  if (extra.opaque) extra.opaque();
+  // --- transparentes ---
+  R.beginQuads(true);
+  for (const a of sim.atoms) if (a.temp > 0.3) { const h = Math.min(1, (a.temp - 0.3) / 1); const em = blackbody(a.temp); R.quad(billboard(a.pos, a.r * 4.5, a.r * 4.5, cm), null, 2, [em[0] + 0.2, em[1] * 0.8 + 0.05, em[2] * 0.6], h * 0.8); }
+  R.quad(billboard(rp, rs * 3.2, rs * 3.2, cm), null, 2, [0.1, 0.9, 0.55], near ? 0.6 : 0.3);
+  R.quad(billboard(rp, rs * 2.6, rs * 2.6, cm), null, 3, [0.4, 1, 0.75], near ? 1 : 0.6);
+  if (sim.burner.on) R.quad(billboard([bp[0], bp[1] + 0.035, bp[2]], 0.08, 0.12, cm), null, 2, [0.2, 0.35, 1], 0.35);
+  // anillos de agarre
+  for (const g of grabs.values()) if (g.atom && sim.atoms.includes(g.atom)) R.quad(billboard(g.atom.pos, g.atom.r * 2.9, g.atom.r * 2.9, cm), null, 1, [0.24, 1, 0.62], 1);
+  if (extra.additive) extra.additive();
+  // etiquetas
+  R.beginQuads(false);
+  for (const a of sim.atoms) {
+    const s = a.r * atomScale(a); const toCam = V.norm(V.sub(cm.pos, a.pos)); const p = V.add(dpos.get(a), V.mul(toCam, s * 1.02));
+    const tx = textTex(a.el.sym, 'sym', a.el.sym); R.quad(billboard(p, s * 1.15, s * 1.15, cm), tx.tex, 0, [1, 1, 1], 1);
+  }
+  for (const g of grabs.values()) {
+    const a = g.atom; if (!a || !sim.atoms.includes(a)) continue;
+    const tx = textTex(a.el.sym, 'tag', a.el.sym, a.el.name); const h = 0.016;
+    R.quad(billboard(V.add(V.add(a.pos, V.mul(cm.up, a.r * 1.5 + h)), V.mul(cm.right, 0)), h * tx.aspect, h, cm), tx.tex, 0, [1, 1, 1], 1);
+  }
+  for (const m of sim.mols) {
+    if (m.atoms.length < 2) continue;
+    const tgt = m.atoms.some(a => a.temp > 0.75) ? 0 : 1; m.labelA += (tgt - m.labelA) * 0.12;
+    if (m.labelA < 0.02) continue;
+    const info = m.info; const tx = info ? textTex(m.hill, 'mol', info.name, info.pretty) : textTex(m.hill, 'dim', prettyFormula(m.hill));
+    const h = info ? 0.021 : 0.017; const p = [m.center[0], m.top + 0.03, m.center[2]];
+    if (m.atoms.some(a => a.grab)) continue;
+    R.quad(billboard(p, h * tx.aspect, h, cm), tx.tex, 0, [1, 1, 1], m.labelA);
+  }
+  const lb = textTex('rec', 'dim', 'RECICLADOR'); R.quad(billboard(V.add(rp, V.mul(cm.up, -rs - 0.03)), 0.012 * lb.aspect, 0.012, cm), lb.tex, 0, [1, 1, 1], 0.8);
+  const lm = textTex('bur' + sim.burner.on, 'dim', sim.burner.on ? 'MECHERO' : 'MECHERO (apagado)'); R.quad(billboard([bp[0], bp[1] - 0.105, bp[2] + 0.03], 0.012 * lm.aspect, 0.012, cm), lm.tex, 0, [1, 1, 1], 0.8);
+  if (extra.labels) extra.labels();
+  // partículas
+  R.particles(FX.out, FX.count);
+  gl.depthMask(true);
+}
+
+// ---------- efectos continuos ----------
+function ambientFX(dt) {
+  const bp = sim.burner.pos;
+  if (sim.burner.on) {
+    for (let i = 0; i < 3; i++) {
+      const r = Math.random() * 0.008; const a = Math.random() * 6.28;
+      FX.add([bp[0] + Math.cos(a) * r, bp[1], bp[2] + Math.sin(a) * r], [(Math.random() - .5) * 0.03, 0.18 + Math.random() * 0.1, (Math.random() - .5) * 0.03], [0.25, 0.45, 1, 0.9], 0.016, 0.22, 0.2, 1);
+      FX.add([bp[0] + Math.cos(a) * r * 1.4, bp[1] + 0.02, bp[2] + Math.sin(a) * r * 1.4], [(Math.random() - .5) * 0.04, 0.22 + Math.random() * 0.12, (Math.random() - .5) * 0.04], [1, 0.5 + Math.random() * 0.2, 0.15, 0.5], 0.02, 0.35, 0.3, 1.5, -0.02);
+    }
+  }
+  for (const a of sim.atoms) {
+    if (a.temp > 0.45 && Math.random() < a.temp * 0.5) {
+      const col = a.el.flame && a.temp > 0.5 ? a.el.flame : [1, 0.55, 0.15];
+      FX.add(V.add(a.pos, [(Math.random() - .5) * a.r, a.r * 0.6, (Math.random() - .5) * a.r]), [(Math.random() - .5) * 0.05, 0.12 + Math.random() * 0.12, (Math.random() - .5) * 0.05], [...col, 0.85], 0.018 + a.temp * 0.01, 0.45, 0.25, 1.5, -0.02);
+    }
+  }
+}
+
+// ================= HUD =================
+function updateHUD() {
+  let hot = null;
+  for (const g of grabs.values()) if (g.atom && sim.atoms.includes(g.atom)) { const m = g.atom.mol; const T = m ? Math.max(...m.atoms.map(a => a.temp)) : g.atom.temp; if (!hot || T > hot.T) hot = { T, m, a: g.atom }; }
+  const hud = $('#thermo');
+  if (!hot) { hud.classList.remove('show'); return; }
+  hud.classList.add('show');
+  const K = Math.round(298 + hot.T * 1100); const pct = Math.min(100, hot.T / 1.2 * 100);
+  hud.querySelector('i').style.width = pct + '%';
+  hud.querySelector('b').textContent = K + ' K';
+  hud.querySelector('small').textContent = hot.T > 0.8 ? '¡Enlaces a punto de romperse!' : hot.T > 0.4 ? 'Caliente… sigue agitando' : 'Agita rápido para calentar';
+}
+
+// ================= BUCLE 2D =================
+let last = performance.now();
+FX.count = 0;
+function frame2D(now) {
+  if (mode === 'xr') return;
+  requestAnimationFrame(frame2D);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; R.time += dt;
+  if (mode === 'hands') handsUpdate();
+  sim.step(dt); processEvents(); ambientFX(dt); FX.update(dt); FX.count = FX.pack();
+  view2d.shake *= Math.exp(-dt * 8);
+  cam = camera2D();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  drawWorld(cam);
+  updateHUD();
+}
+
+// ================= MODO MANOS (cámara + MediaPipe) =================
+let landmarker = null, handsCfg = { facing: 'user' }, lastVT = -1, handSlots = [null, null];
+const HAND_LINKS = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [5, 9], [9, 10], [10, 11], [11, 12], [9, 13], [13, 14], [14, 15], [15, 16], [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]];
+async function startHands() {
+  Audio.unlock();
+  if (mode === 'hands') { stopHands(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { openModal(camBlockedHTML()); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: handsCfg.facing, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    video.srcObject = stream; await video.play();
+  } catch (e) { openModal(camBlockedHTML(e)); return; }
+  document.body.classList.add('hands', handsCfg.facing === 'user' ? 'mirror' : 'nomirror'); mode = 'hands';
+  view2d.yaw = 0; view2d.pitch = 0.02; resize();
+  if (!landmarker) {
+    toast('⏳ Cargando el detector de manos…', 'info', 3000);
+    try {
+      const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14');
+      const files = await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+      const opts = d => ({ baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate: d }, runningMode: 'VIDEO', numHands: 2, minHandDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+      try { landmarker = await vision.HandLandmarker.createFromOptions(files, opts('GPU')); } catch (e) { landmarker = await vision.HandLandmarker.createFromOptions(files, opts('CPU')); }
+      toast('✋ ¡Listo! <b>Pellizca</b> (pulgar + índice) para agarrar átomos. Pellizca un elemento de la tabla para sacarlo.', 'info', 5000);
+    } catch (e) {
+      stopHands(); openModal(camBlockedHTML(e, true)); return;
+    }
+  }
+}
+function stopHands() {
+  for (let i = 0; i < 2; i++) endGrab('hand' + i); handSlots = [null, null];
+  const s = video.srcObject; if (s) s.getTracks().forEach(t => t.stop()); video.srcObject = null;
+  document.body.classList.remove('hands', 'mirror', 'nomirror'); mode = 'touch'; octx.clearRect(0, 0, overlay.width, overlay.height); resize();
+}
+$('#btnHands').addEventListener('click', startHands);
+$('#btnFlip').addEventListener('click', async () => { handsCfg.facing = handsCfg.facing === 'user' ? 'environment' : 'user'; if (mode === 'hands') { stopHands(); await startHands(); } });
+$('#btnExitHands').addEventListener('click', stopHands);
+function camBlockedHTML(err, model) {
+  const nf = err && err.name === 'NotFoundError';
+  const title = model ? 'No se pudo cargar el detector de manos' : nf ? 'No encontré una cámara' : 'La cámara está bloqueada aquí';
+  return `<div class="mhead"><div><h2>${title}</h2><p>${err ? (err.name || '') + ' ' + (err.message || '') : ''}</p></div><button class="x-btn" data-close>✕</button></div>
+  <p class="para">${nf ? 'Este dispositivo no tiene cámara disponible (o la está usando otra app).' : 'Si estás viendo esto dentro de Claude, la vista previa no deja usar la cámara ni descargar el modelo de IA.'} Para jugar con tus manos:</p>
+  <ol class="steps"><li>Descarga el archivo <b>atomo-lab.html</b> que te dejé en el chat.</li><li>Súbelo a <b>GitHub Pages</b>, Netlify Drop o cualquier hosting con <b>https</b>.</li><li>Ábrelo en el celular o el PC, toca <b>✋</b> y acepta el permiso de cámara.</li></ol>
+  <p class="para">Mientras tanto, todo funciona con los dedos en la pantalla: usa <b>dos dedos</b> para mover dos átomos a la vez.</p>
+  <div class="actions-row"><button data-close class="primary">Entendido</button></div>`;
+}
+function videoToScreen(nx, ny) {
+  const W = overlay.clientWidth, H = overlay.clientHeight, vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+  const sc = Math.max(W / vw, H / vh); const ox = (W - vw * sc) / 2, oy = (H - vh * sc) / 2;
+  const x = handsCfg.facing === 'user' ? 1 - nx : nx;
+  return [ox + x * vw * sc, oy + ny * vh * sc];
+}
+function handsUpdate() {
+  const W = overlay.width, H = overlay.height, dpr = W / overlay.clientWidth; octx.clearRect(0, 0, W, H);
+  if (!landmarker || video.readyState < 2) return;
+  let res = null;
+  if (video.currentTime !== lastVT) { lastVT = video.currentTime; try { res = landmarker.detectForVideo(video, performance.now()); } catch (e) { return; } handsUpdate.res = res; }
+  res = handsUpdate.res; if (!res) return;
+  const hands = (res.landmarks || []).map(lm => {
+    const pts = lm.map(p => videoToScreen(p.x, p.y));
+    const size = Math.hypot(pts[0][0] - pts[9][0], pts[0][1] - pts[9][1]);
+    const pinchD = Math.hypot(pts[4][0] - pts[8][0], pts[4][1] - pts[8][1]) / Math.max(1, size);
+    return { pts, size, pinchD, mid: [(pts[4][0] + pts[8][0]) / 2, (pts[4][1] + pts[8][1]) / 2] };
+  });
+  // emparejar con ranuras previas
+  const used = new Set(); const next = [null, null];
+  for (let s = 0; s < 2; s++) {
+    const prev = handSlots[s]; if (!prev) continue;
+    let bi = -1, bd = 1e9; hands.forEach((h, i) => { if (used.has(i)) return; const d = Math.hypot(h.pts[0][0] - prev.pts[0][0], h.pts[0][1] - prev.pts[0][1]); if (d < bd) { bd = d; bi = i; } });
+    if (bi >= 0 && bd < 250) { used.add(bi); next[s] = Object.assign(hands[bi], { pinch: prev.pinch, s0: prev.s0 }); }
+  }
+  hands.forEach((h, i) => { if (used.has(i)) return; const s = next[0] ? (next[1] ? -1 : 1) : 0; if (s >= 0) next[s] = Object.assign(h, { pinch: false }); });
+  for (let s = 0; s < 2; s++) {
+    const h = next[s], key = 'hand' + s;
+    if (!h) { if (handSlots[s] && handSlots[s].pinch) endGrab(key); continue; }
+    const wasPinch = h.pinch; h.pinch = wasPinch ? h.pinchD < 0.5 : h.pinchD < 0.3;
+    const ray = screenRay(h.mid[0] + canvas.getBoundingClientRect().left, h.mid[1] + canvas.getBoundingClientRect().top);
+    if (h.pinch && !wasPinch) {
+      const elx = document.elementFromPoint(h.mid[0], h.mid[1]); const tile = elx && elx.closest && elx.closest('.tile');
+      if (tile) {
+        const el = ELEMENTS[+tile.dataset.z - 1]; const depth = V.dot(V.sub(sim.bounds.c, cam.pos), V.mul(cam.back, -1));
+        const a = spawnAt(el, rayDepthPoint(ray, depth)); startGrab2D(key, a, ray, { s0: h.size, d0: depth }); showElInfo(el);
+      } else {
+        // agarre por proximidad en pantalla
+        let best = null, bd = 1e9;
+        for (const a of sim.atoms) { if (a.grab) continue; const sp = projectToScreen(a.pos); if (!sp) continue; const d = Math.hypot(sp[0] - h.mid[0], sp[1] - h.mid[1]); const rpx = projRadius(a); if (d < Math.max(36, rpx * 1.8) && d < bd) { bd = d; best = a; } }
+        if (best) { const g = startGrab2D(key, best, ray, { s0: h.size }); g.d0 = g.depth; }
+      }
+    } else if (h.pinch && grabs.has(key)) {
+      const g = grabs.get(key); if (g.s0 && g.d0) g.depth = Math.max(0.35, Math.min(2.2, g.d0 * Math.pow(g.s0 / h.size, 0.9)));
+      moveGrab2D(key, ray);
+    } else if (!h.pinch && wasPinch) endGrab(key);
+    // dibujar mano
+    octx.save(); octx.scale(dpr, dpr);
+    octx.lineCap = 'round'; octx.strokeStyle = 'rgba(255,255,255,0.55)'; octx.lineWidth = 3;
+    for (const [i, j] of HAND_LINKS) { octx.beginPath(); octx.moveTo(...h.pts[i]); octx.lineTo(...h.pts[j]); octx.stroke(); }
+    for (const p of h.pts) { octx.beginPath(); octx.arc(p[0], p[1], 3.5, 0, 6.283); octx.fillStyle = 'rgba(255,255,255,0.9)'; octx.fill(); }
+    const pr = 16 + Math.max(0, (h.pinchD - 0.3)) * 30;
+    octx.beginPath(); octx.arc(h.mid[0], h.mid[1], pr, 0, 6.283); octx.lineWidth = h.pinch ? 5 : 2;
+    octx.strokeStyle = h.pinch ? '#3dff9e' : 'rgba(255,255,255,0.7)'; octx.shadowColor = '#3dff9e'; octx.shadowBlur = h.pinch ? 18 : 0; octx.stroke();
+    octx.restore();
+  }
+  handSlots = next;
+}
+function projectToScreen(p) {
+  const v = M4.xform(cam.view, p); if (v[2] > -0.01) return null;
+  const t = Math.tan(FOV / 2), W = overlay.clientWidth, H = overlay.clientHeight, asp = W / H;
+  return [(v[0] / (-v[2] * t * asp) * 0.5 + 0.5) * W, (-v[1] / (-v[2] * t) * 0.5 + 0.5) * H];
+}
+function projRadius(a) { const v = M4.xform(cam.view, a.pos); return a.r / (-v[2] * Math.tan(FOV / 2)) * overlay.clientHeight * 0.5; }
+
+// ================= WEBXR =================
+let xr = null, xrModes = [], panelDirty = true;
+const PANEL = { W: 2048, H: 1280, w: 0.86, pos: [0, 0.17, -0.34], tilt: -0.22 };
+PANEL.h = PANEL.w * PANEL.H / PANEL.W;
+const panelCv = document.createElement('canvas'); panelCv.width = PANEL.W; panelCv.height = PANEL.H; const pctx = panelCv.getContext('2d');
+let panelTex = null, panelHover = null;
+const PCELL = 110, PX0 = 34, PY0 = 150;
+function panelCellRect(el) {
+  let row, col; if (el.f) { row = el.f === 'lan' ? 7.2 : 8.2; col = 3 + el.fi; } else { row = el.period - 1; col = el.group - 1; }
+  if (el.f) col -= 1;
+  return [PX0 + col * PCELL, PY0 + row * PCELL, PCELL - 8, PCELL - 8];
+}
+const PBTN = [{ id: 'clear', label: '🗑  Limpiar', x: 34, w: 300 }, { id: 'burner', label: '🔥  Mechero', x: 350, w: 300 }, { id: 'demo', label: '✨  Demo', x: 666, w: 260 }, { id: 'exit', label: '✕  Salir', x: 1714, w: 300 }];
+function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function drawPanel() {
+  const c = pctx, F = '"Space Grotesk", "Inter", system-ui, sans-serif';
+  c.clearRect(0, 0, PANEL.W, PANEL.H);
+  rr(c, 4, 4, PANEL.W - 8, PANEL.H - 8, 48); c.fillStyle = 'rgba(10,12,26,0.86)'; c.fill(); c.lineWidth = 4; c.strokeStyle = 'rgba(120,200,255,0.35)'; c.stroke();
+  c.fillStyle = '#fff'; c.font = `700 64px ${F}`; c.textBaseline = 'middle'; c.fillText('ÁTOMO LAB', 40, 74);
+  c.font = `500 36px ${F}`; c.fillStyle = 'rgba(255,255,255,0.65)'; c.fillText('Tabla periódica · pellizca un elemento', 420, 76);
+  c.textAlign = 'right'; c.fillStyle = '#3dff9e'; c.font = `600 40px ${F}`; c.fillText(`🧪 ${discovered.size}/${MOL_LIST.length}`, PANEL.W - 40, 76); c.textAlign = 'left';
+  for (const el of ELEMENTS) {
+    const [x, y, w, h] = panelCellRect(el); const hov = panelHover === el.Z;
+    rr(c, x, y, w, h, 14); c.fillStyle = CATS[el.cat].tile; c.globalAlpha = hov ? 1 : 0.82; c.fill(); c.globalAlpha = 1;
+    if (hov) { c.lineWidth = 6; c.strokeStyle = '#fff'; c.stroke(); }
+    c.fillStyle = 'rgba(0,0,0,0.55)'; c.font = `500 20px ${F}`; c.fillText(el.Z, x + 9, y + 18);
+    c.fillStyle = '#0b0d18'; c.font = `700 ${el.sym.length > 2 ? 36 : 44}px ${F}`; c.textAlign = 'center'; c.fillText(el.sym, x + w / 2, y + h / 2 + 8); c.textAlign = 'left';
+  }
+  const fy = PANEL.H - 104;
+  for (const b of PBTN) { rr(c, b.x, fy, b.w, 76, 38); c.fillStyle = b.id === 'exit' ? 'rgba(255,90,110,0.25)' : (b.id === 'burner' && !sim.burner.on ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.12)'); c.fill(); c.lineWidth = 3; c.strokeStyle = panelHover === b.id ? '#3dff9e' : 'rgba(255,255,255,0.3)'; c.stroke(); c.fillStyle = '#fff'; c.font = `600 34px ${F}`; c.textAlign = 'center'; c.fillText(b.label, b.x + b.w / 2, fy + 40); c.textAlign = 'left'; }
+  c.font = `500 32px ${F}`; c.fillStyle = 'rgba(200,240,255,0.85)'; c.fillText(panelMsg.slice(0, 48), 950, fy + 40);
+  panelTex = R.texFromCanvas(panelCv, panelTex); panelDirty = false;
+}
+function panelModel() { return M4.mul(M4.trans(PANEL.pos), M4.mul(M4.rotX(PANEL.tilt), M4.basis([PANEL.w, 0, 0], [0, PANEL.h, 0], [0, 0, 1], [0, 0, 0]))); }
+let panelInv = null;
+function panelLocal(p) { if (!panelInv) panelInv = M4.invert(panelModel()); const l = M4.xform(panelInv, p); return { x: (l[0] + 0.5) * PANEL.W, y: (0.5 - l[1]) * PANEL.H, z: l[2] }; }
+function panelHitXY(x, y) {
+  if (x < 0 || y < 0 || x > PANEL.W || y > PANEL.H) return null;
+  for (const el of ELEMENTS) { const [cx, cy, w, h] = panelCellRect(el); if (x >= cx && x <= cx + w && y >= cy && y <= cy + h) return { type: 'el', el }; }
+  const fy = PANEL.H - 104; for (const b of PBTN) if (x >= b.x && x <= b.x + b.w && y >= fy && y <= fy + 76) return { type: 'btn', id: b.id };
+  return { type: 'panel' };
+}
+function panelRay(o, d) { // intersección rayo-plano del panel
+  const m = panelModel(); const n = V.norm(M4.xdir(m, [0, 0, 1])); const c = PANEL.pos; const den = V.dot(d, n); if (Math.abs(den) < 1e-5) return null;
+  const t = V.dot(V.sub(c, o), n) / den; if (t < 0) return null; const p = V.add(o, V.mul(d, t)); const l = panelLocal(p); return { t, p, hit: panelHitXY(l.x, l.y) };
+}
+function panelButton(id) {
+  if (id === 'clear') { sim.clear(); grabs.clear(); Audio.whoosh(); }
+  if (id === 'burner') { sim.burner.on = !sim.burner.on; panelDirty = true; }
+  if (id === 'demo') demo();
+  if (id === 'exit' && xr) xr.session.end();
+  Audio.tick(); xrPulse(0.4, 20);
+}
+function xrPulse(v, ms) { if (!xr) return; for (const s of xr.session.inputSources) { try { const h = s.gamepad && s.gamepad.hapticActuators && s.gamepad.hapticActuators[0]; if (h && h.pulse) h.pulse(v, ms); } catch (e) { } } }
+
+async function checkXR() {
+  xrModes = [];
+  try {
+    if (navigator.xr) {
+      if (await navigator.xr.isSessionSupported('immersive-vr')) xrModes.push('immersive-vr');
+      if (await navigator.xr.isSessionSupported('immersive-ar')) xrModes.push('immersive-ar');
+    }
+  } catch (e) { }
+  $('#btnVR').classList.toggle('dim', !xrModes.length);
+  $('#btnAR').style.display = xrModes.includes('immersive-ar') ? '' : 'none';
+}
+function xrInfoHTML() {
+  return `<div class="mhead"><div><h2>Realidad virtual</h2><p>Este navegador no ofrece WebXR aquí</p></div><button class="x-btn" data-close>✕</button></div>
+  <p class="para">El modo VR/AR funciona en <b>Meta Quest</b> (navegador Meta) y <b>Apple Vision Pro</b> (Safari), con seguimiento de manos: la tabla periódica flota frente a ti, pellizcas un elemento, lo sacas, y juntas los átomos con tus dedos.</p>
+  <ol class="steps"><li>Descarga <b>atomo-lab.html</b> del chat y súbelo a GitHub Pages (o Netlify Drop).</li><li>Abre esa dirección en el visor.</li><li>Toca <b>VR</b> (o <b>AR</b> en Quest para verlo sobre tu pieza real).</li></ol>
+  <p class="para">En el celular, el modo <b>✋ Manos</b> usa la cámara para algo muy parecido.</p>
+  <div class="actions-row"><button data-close class="primary">OK</button></div>`;
+}
+$('#btnVR').addEventListener('click', () => { Audio.unlock(); if (!xrModes.includes('immersive-vr')) { openModal(xrInfoHTML()); return; } enterXR('immersive-vr'); });
+$('#btnAR').addEventListener('click', () => { Audio.unlock(); enterXR('immersive-ar'); });
+
+async function enterXR(xmode) {
+  if (!xmode) { openModal(xrInfoHTML()); return; }
+  try {
+    if (mode === 'hands') stopHands();
+    const session = await navigator.xr.requestSession(xmode, { optionalFeatures: ['local-floor', 'hand-tracking'] });
+    await gl.makeXRCompatible();
+    session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl, { antialias: true }), depthNear: 0.02, depthFar: 100 });
+    let base, floorOK = true; try { base = await session.requestReferenceSpace('local-floor'); } catch (e) { base = await session.requestReferenceSpace('local'); floorOK = false; }
+    xr = { session, mode: xmode, base, ref: null, floorOK, hands: new Map(), rays: new Map(), pendingSel: [], lastHandGrab: 0, joints: new Map() };
+    mode = 'xr'; layoutXR(); panelDirty = true; panelInv = null;
+    for (const k of [...grabs.keys()]) endGrab(k);
+    session.addEventListener('end', () => { for (const k of [...grabs.keys()]) endGrab(k); xr = null; mode = 'touch'; resize(); last = performance.now(); requestAnimationFrame(frame2D); });
+    session.addEventListener('selectstart', e => { if (e.inputSource.hand) return; xr && xr.pendingSel.push({ src: e.inputSource, t: performance.now() }); });
+    session.addEventListener('selectend', e => { if (e.inputSource.hand) return; endGrab('ray-' + srcKey(e.inputSource)); });
+    xr.lastT = performance.now(); session.requestAnimationFrame(xrFrame);
+  } catch (e) { toast('No se pudo entrar a ' + (xmode === 'immersive-ar' ? 'AR' : 'VR') + ': ' + e.message, 'info', 4000); }
+}
+const srcKeys = new WeakMap(); let srcN = 0;
+function srcKey(s) { if (!srcKeys.has(s)) srcKeys.set(s, (s.handedness || 'x') + (srcN++)); return srcKeys.get(s); }
+const JOINTS = ['wrist', 'thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip', 'index-finger-metacarpal', 'index-finger-phalanx-proximal', 'index-finger-phalanx-intermediate', 'index-finger-phalanx-distal', 'index-finger-tip', 'middle-finger-metacarpal', 'middle-finger-phalanx-proximal', 'middle-finger-phalanx-intermediate', 'middle-finger-phalanx-distal', 'middle-finger-tip', 'ring-finger-metacarpal', 'ring-finger-phalanx-proximal', 'ring-finger-phalanx-intermediate', 'ring-finger-phalanx-distal', 'ring-finger-tip', 'pinky-finger-metacarpal', 'pinky-finger-phalanx-proximal', 'pinky-finger-phalanx-intermediate', 'pinky-finger-phalanx-distal', 'pinky-finger-tip'];
+
+function xrGrabAt(key, atom, handPoint) {
+  sim.grab(atom, key); const g = { atom, offset: V.sub(atom.pos, handPoint), hist: [{ t: performance.now(), p: atom.pos.slice() }] }; grabs.set(key, g);
+  Audio.tick(); xrPulse(0.3, 15);
+  if ([...grabs.values()].filter(x => x.atom).length >= 2) unlock('twohands');
+  return g;
+}
+function xrMoveGrab(key, p) { const g = grabs.get(key); if (!g) return; if (!sim.atoms.includes(g.atom)) { grabs.delete(key); return; } g.offset = V.mul(g.offset, 0.85); const t = V.add(p, g.offset); sim.setTarget(g.atom, t); pushHist(g, t); }
+
+function xrFrame(t, frame) {
+  if (!xr) return; const s = xr.session; s.requestAnimationFrame(xrFrame);
+  const now = performance.now(); const dt = Math.min(0.05, (now - xr.lastT) / 1000); xr.lastT = now; R.time += dt;
+  if (!xr.ref) {
+    const p = frame.getViewerPose(xr.base); if (!p) return;
+    const m = p.transform.matrix, hp = p.transform.position; let fwd = V.norm([-m[8], 0, -m[10]]); if (!V.len(fwd)) fwd = [0, 0, -1];
+    const th = Math.atan2(-fwd[0], -fwd[2]);
+    const labY = xr.floorOK ? Math.max(0.7, hp.y - 0.3) : hp.y - 0.3;
+    const pos = { x: hp.x + fwd[0] * 0.5, y: labY, z: hp.z + fwd[2] * 0.5 };
+    xr.ref = xr.base.getOffsetReferenceSpace(new XRRigidTransform(pos, { x: 0, y: Math.sin(th / 2), z: 0, w: Math.cos(th / 2) }));
+    labFloorY = xr.floorOK ? -labY : -1.1;
+  }
+  const pose = frame.getViewerPose(xr.ref); if (!pose) return;
+  const vm = pose.transform.matrix;
+  const basis = { right: [vm[0], vm[1], vm[2]], up: [vm[4], vm[5], vm[6]], back: [vm[8], vm[9], vm[10]], pos: [vm[12], vm[13], vm[14]] };
+  // ---- entrada ----
+  let newHover = null; const handPts = [];
+  for (const src of s.inputSources) {
+    if (src.hand) {
+      const key = 'hand-' + src.handedness; const st = xr.hands.get(key) || { pinch: false }; xr.hands.set(key, st);
+      const jp = []; for (const name of JOINTS) { const j = src.hand.get(name); const jpose = j && frame.getJointPose(j, xr.ref); jp.push(jpose ? { p: [jpose.transform.position.x, jpose.transform.position.y, jpose.transform.position.z], r: jpose.radius || 0.008 } : null); }
+      xr.joints.set(key, jp);
+      const th = jp[4], ix = jp[9]; if (!th || !ix) { if (st.pinch) { endGrab(key); st.pinch = false; } continue; }
+      const d = V.dist(th.p, ix.p); const mid = V.lerp(th.p, ix.p, 0.5); handPts.push(mid);
+      const was = st.pinch; st.pinch = was ? d < 0.035 : d < 0.018; st.mid = mid;
+      const pl = panelLocal(ix.p); if (Math.abs(pl.z) < 0.06) { const h = panelHitXY(pl.x, pl.y); if (h && h.type === 'el') newHover = h.el.Z; else if (h && h.type === 'btn') newHover = h.id; }
+      if (st.pinch && !was) {
+        const lp = panelLocal(mid); const ph = Math.abs(lp.z) < 0.05 ? panelHitXY(lp.x, lp.y) : null;
+        if (ph && ph.type === 'el') { const a = spawnAt(ph.el, mid); xrGrabAt(key, a, mid); xr.lastHandGrab = now; panelMsg = ph.el.sym + ' · ' + ph.el.name; panelDirty = true; }
+        else if (ph && ph.type === 'btn') { panelButton(ph.id); xr.lastHandGrab = now; }
+        else {
+          let best = null, bd = 0.07; for (const a of sim.atoms) { if (a.grab) continue; const dd = V.dist(a.pos, mid) - a.r; if (dd < bd) { bd = dd; best = a; } }
+          if (best) { xrGrabAt(key, best, mid); xr.lastHandGrab = now; }
+        }
+      } else if (st.pinch && grabs.has(key)) xrMoveGrab(key, mid);
+      else if (!st.pinch && was) endGrab(key);
+    } else {
+      const rp = frame.getPose(src.targetRaySpace, xr.ref); const key = 'ray-' + srcKey(src);
+      if (!rp) continue;
+      const o = [rp.transform.position.x, rp.transform.position.y, rp.transform.position.z];
+      const m = rp.transform.matrix; const d = V.norm([-m[8], -m[9], -m[10]]);
+      xr.rays.set(key, { o, d, mode: src.targetRayMode, t: now });
+      const g = grabs.get(key); if (g && g.dist != null) xrMoveGrab(key, V.add(o, V.mul(d, g.dist)));
+      const ph = panelRay(o, d); if (ph && ph.hit) { if (ph.hit.type === 'el') newHover = ph.hit.el.Z; else if (ph.hit.type === 'btn') newHover = ph.hit.id; }
+    }
+  }
+  for (const [k, r] of xr.rays) if (now - r.t > 300) xr.rays.delete(k);
+  // selecciones con rayo (mandos / mirada + pellizco en Vision Pro)
+  for (const ps of xr.pendingSel.splice(0)) {
+    if (now - xr.lastHandGrab < 250) continue;
+    const key = 'ray-' + srcKey(ps.src); const r = xr.rays.get(key); if (!r) continue;
+    const ray = { o: r.o, d: r.d }; const hit = pickAtom(ray, 1.6); const ph = panelRay(r.o, r.d);
+    if (hit && (!ph || hit.t < ph.t)) { const p = V.add(r.o, V.mul(r.d, hit.t)); const g = xrGrabAt(key, hit.atom, p); g.dist = hit.t; }
+    else if (ph && ph.hit && ph.hit.type === 'el') { const dist = Math.max(0.25, ph.t * 0.6); const p = V.add(r.o, V.mul(r.d, dist)); const a = spawnAt(ph.hit.el, p); const g = xrGrabAt(key, a, p); g.dist = dist; panelMsg = ph.hit.el.sym + ' · ' + ph.hit.el.name; panelDirty = true; }
+    else if (ph && ph.hit && ph.hit.type === 'btn') panelButton(ph.hit.id);
+  }
+  if (newHover !== panelHover) { panelHover = newHover; panelDirty = true; }
+  // ---- simulación ----
+  sim.step(dt); processEvents(); ambientFX(dt); FX.update(dt); FX.count = FX.pack();
+  if (panelDirty) drawPanel();
+  // ---- render ----
+  const layer = s.renderState.baseLayer; gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer);
+  const ar = xr.mode === 'immersive-ar';
+  gl.clearColor(0, 0, 0, ar ? 0 : 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  for (const v of pose.views) {
+    const vp = layer.getViewport(v); gl.viewport(vp.x, vp.y, vp.width, vp.height);
+    const cm = { view: v.transform.inverse.matrix, proj: v.projectionMatrix, pos: [v.transform.position.x, v.transform.position.y, v.transform.position.z], right: basis.right, up: basis.up, back: basis.back, vpH: vp.height, env: !ar, xr: true };
+    cam = cm;
+    drawWorld(cm, {
+      opaque: () => {
+        if (!ar) for (const jp of xr.joints.values()) for (const j of jp) if (j) R.lit(R.mesh.lowSphere, M4.ts(j.p, j.r * 0.9), [0.75, 0.88, 1], [0.08, 0.12, 0.18], 0.6, 0.6);
+        for (const r of xr.rays.values()) if (r.mode === 'tracked-pointer') R.lit(R.mesh.cyl, cylModel(r.o, V.add(r.o, V.mul(r.d, 0.6)), 0.0015), [0.4, 1, 0.7], [0.2, 0.6, 0.4], 0, 0);
+      },
+      additive: () => {
+        for (const [k, st] of xr.hands) if (st.mid) R.quad(billboard(st.mid, 0.024, 0.024, cm), null, 1, st.pinch ? [0.24, 1, 0.62] : [0.8, 0.9, 1], st.pinch ? 1 : 0.45);
+      },
+      labels: () => {
+        R.beginQuads(false); gl.depthMask(true);
+        R.quad(panelModel(), panelTex, 0, [1, 1, 1], 1);
+        gl.depthMask(false);
+      },
+    });
+  }
+}
+
+// ================= ARRANQUE =================
+resize(); syncSoundBtn(); updateCounters(); checkXR();
+cam = camera2D();
+requestAnimationFrame(frame2D);
+if (store.help) $('#hint').classList.add('gone');
+$('#hintGo').addEventListener('click', () => { closeHintOnAction(); Audio.unlock(); demo(); });
+$('#hintHelp').addEventListener('click', () => { closeHintOnAction(); openModal(helpHTML()); });
+window.__atomo = { panelModel, panelCellRect, PANEL, ELEMENTS, enterXR, sim, R, view2d, grabs, spawnNear, spawnFormula, EL_BY_SYM, startGrab2D, moveGrab2D, endGrab, screenRay, projectToScreen, get cam() { return cam; } };
+
+</script>
+</body>
+</html>
